@@ -71,14 +71,15 @@ export const LiveConversation: React.FC = () => {
   const { addToast } = useToast();
   const [isLive, setIsLive] = useState(false);
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
-  
+  const [micPermission, setMicPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
+
   const aiRef = useRef<GoogleGenAI | null>(null);
   const sessionPromiseRef = useRef<Promise<any> | null>(null);
   const audioContextRefs = useRef<{ input: AudioContext | null, output: AudioContext | null }>({ input: null, output: null });
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const streamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  
+
   const sourcesRef = useRef(new Set<AudioBufferSourceNode>());
   let nextStartTime = 0;
   let transcriptIdCounter = 0;
@@ -94,6 +95,20 @@ export const LiveConversation: React.FC = () => {
     } catch(e) {
       addToast(e instanceof Error ? e.message : 'Error initializing AI', 'error');
     }
+
+    const checkMicPermission = async () => {
+      try {
+        const result = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+        setMicPermission(result.state as 'prompt' | 'granted' | 'denied');
+        result.onchange = () => {
+          setMicPermission(result.state as 'prompt' | 'granted' | 'denied');
+        };
+      } catch (e) {
+        console.warn('Could not check microphone permission:', e);
+      }
+    };
+
+    checkMicPermission();
 
     return () => { stopConversation(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -142,13 +157,15 @@ export const LiveConversation: React.FC = () => {
         addToast('AI client not initialized or browser not supported.', 'error');
         return;
     }
-    
+
     setIsLive(true);
-    setTranscript([{ id: transcriptIdCounter++, role: 'status', text: 'Connecting...', isFinal: true }]);
+    setTranscript([{ id: transcriptIdCounter++, role: 'status', text: 'Requesting microphone access...', isFinal: true }]);
 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaStreamRef.current = stream;
+        setMicPermission('granted');
+        addOrUpdateTranscript('status', 'Microphone access granted. Connecting to Gemini...', true);
 
         audioContextRefs.current.input = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
         audioContextRefs.current.output = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
@@ -239,8 +256,19 @@ export const LiveConversation: React.FC = () => {
         });
         sessionPromiseRef.current = sessionPromise;
     } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to start audio stream.';
+        let message = err instanceof Error ? err.message : 'Failed to start audio stream.';
+
+        if (err instanceof DOMException) {
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                message = 'Microphone access denied. Please allow microphone access and try again.';
+                setMicPermission('denied');
+            } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                message = 'No microphone found. Please connect a microphone and try again.';
+            }
+        }
+
         addToast(message, 'error');
+        setTranscript([{ id: transcriptIdCounter++, role: 'status', text: message, isFinal: true }]);
         stopConversation();
     }
   };
@@ -263,10 +291,29 @@ export const LiveConversation: React.FC = () => {
   return (
     <div className="p-6 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
       <h2 className="text-xl font-semibold mb-4">Live Conversation</h2>
-      <p className="text-slate-500 dark:text-slate-400 mb-6">Have a real-time voice conversation with Gemini. Try saying "Post to LinkedIn that I'm building with the Gemini API."</p>
-      <div className="flex justify-center items-center gap-4">
+      <p className="text-slate-500 dark:text-slate-400 mb-4">Have a real-time voice conversation with Gemini. Try saying "Post to LinkedIn that I'm building with the Gemini API."</p>
+
+      {micPermission === 'denied' && (
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm">
+          Microphone access denied. Please enable microphone permissions in your browser settings and reload the page.
+        </div>
+      )}
+
+      {micPermission === 'prompt' && !isLive && (
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-blue-700 dark:text-blue-400 text-sm">
+          Click "Start Conversation" below. You'll be prompted to allow microphone access.
+        </div>
+      )}
+
+      {micPermission === 'granted' && !isLive && (
+        <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-400 text-sm">
+          Microphone access granted. Ready to start conversation.
+        </div>
+      )}
+
+      <div className="flex justify-center items-center gap-4 mb-6">
         {!isLive ? (
-          <Button onClick={startConversation} className="gap-2">
+          <Button onClick={startConversation} className="gap-2" disabled={micPermission === 'denied'}>
             <MicIcon className="w-5 h-5" />
             Start Conversation
           </Button>
