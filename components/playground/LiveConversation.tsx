@@ -72,6 +72,7 @@ export const LiveConversation: React.FC = () => {
   const [isLive, setIsLive] = useState(false);
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [micPermission, setMicPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
+  const [isListening, setIsListening] = useState(false);
 
   const aiRef = useRef<GoogleGenAI | null>(null);
   const sessionPromiseRef = useRef<Promise<any> | null>(null);
@@ -131,6 +132,7 @@ export const LiveConversation: React.FC = () => {
 
   const stopConversation = () => {
     setIsLive(false);
+    setIsListening(false);
     addOrUpdateTranscript('status', 'Connection closed.', true);
     
     sessionPromiseRef.current?.then(session => session.close());
@@ -176,31 +178,42 @@ export const LiveConversation: React.FC = () => {
             model: 'gemini-2.5-flash-native-audio-preview-09-2025',
             callbacks: {
                 onopen: () => {
+                    console.log('[LiveConversation] WebSocket connection opened');
                     addOrUpdateTranscript('status', 'Connected. Start speaking...', true);
+                    setIsListening(true);
                     const inputCtx = audioContextRefs.current.input!;
                     const source = inputCtx.createMediaStreamSource(stream);
                     streamSourceRef.current = source;
                     const scriptProcessor = inputCtx.createScriptProcessor(4096, 1, 1);
                     scriptProcessorRef.current = scriptProcessor;
-                    
+
+                    let audioChunkCount = 0;
                     scriptProcessor.onaudioprocess = (event) => {
                         const inputData = event.inputBuffer.getChannelData(0);
                         const blob: Blob = {
                             data: encode(new Uint8Array(new Int16Array(inputData.map(v => v * 32768)).buffer)),
                             mimeType: 'audio/pcm;rate=16000',
                         };
+                        audioChunkCount++;
+                        if (audioChunkCount % 50 === 0) {
+                            console.log(`[LiveConversation] Sent ${audioChunkCount} audio chunks`);
+                        }
                         sessionPromiseRef.current?.then((session) => session.sendRealtimeInput({ media: blob }));
                     };
                     source.connect(scriptProcessor);
                     scriptProcessor.connect(inputCtx.destination);
                 },
                 onmessage: async (msg: LiveServerMessage) => {
+                    console.log('[LiveConversation] Received message:', msg);
+
                     if (msg.serverContent?.inputTranscription) {
                         const { text } = msg.serverContent.inputTranscription;
+                        console.log('[LiveConversation] User said:', text);
                         addOrUpdateTranscript('user', text, false);
                     }
                     if (msg.serverContent?.outputTranscription) {
                         const { text } = msg.serverContent.outputTranscription;
+                        console.log('[LiveConversation] Gemini said:', text);
                         addOrUpdateTranscript('model', text, false);
                     }
                     if (msg.toolCall) {
@@ -240,10 +253,16 @@ export const LiveConversation: React.FC = () => {
                     }
                 },
                 onerror: (e: ErrorEvent) => {
+                    console.error('[LiveConversation] WebSocket error:', e);
                     addToast(`Connection error: ${e.message}`, 'error');
+                    addOrUpdateTranscript('status', `Error: ${e.message}`, true);
                     stopConversation();
                 },
                 onclose: (e: CloseEvent) => {
+                    console.log('[LiveConversation] WebSocket closed:', e.code, e.reason);
+                    if (e.code !== 1000) {
+                        addOrUpdateTranscript('status', `Connection closed unexpectedly (code: ${e.code})`, true);
+                    }
                     stopConversation();
                 },
             },
@@ -311,17 +330,26 @@ export const LiveConversation: React.FC = () => {
         </div>
       )}
 
-      <div className="flex justify-center items-center gap-4 mb-6">
-        {!isLive ? (
-          <Button onClick={startConversation} className="gap-2" disabled={micPermission === 'denied'}>
-            <MicIcon className="w-5 h-5" />
-            Start Conversation
-          </Button>
-        ) : (
-          <Button onClick={stopConversation} variant="secondary" className="gap-2 border-red-500/50 text-red-600 dark:border-red-500/30 dark:text-red-400">
-            <StopCircleIcon className="w-5 h-5" />
-            Stop Conversation
-          </Button>
+      <div className="flex flex-col items-center gap-4 mb-6">
+        <div className="flex justify-center items-center gap-4">
+          {!isLive ? (
+            <Button onClick={startConversation} className="gap-2" disabled={micPermission === 'denied'}>
+              <MicIcon className="w-5 h-5" />
+              Start Conversation
+            </Button>
+          ) : (
+            <Button onClick={stopConversation} variant="secondary" className="gap-2 border-red-500/50 text-red-600 dark:border-red-500/30 dark:text-red-400">
+              <StopCircleIcon className="w-5 h-5" />
+              Stop Conversation
+            </Button>
+          )}
+        </div>
+
+        {isLive && isListening && (
+          <div className="flex items-center gap-2 text-sm text-teal-600 dark:text-teal-400">
+            <div className="w-2 h-2 bg-teal-500 rounded-full animate-pulse"></div>
+            Listening and sending audio to Gemini...
+          </div>
         )}
       </div>
       <TranscriptDisplay entries={transcript} />
