@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, FormEvent, useCallback } from 'react';
 import { GoogleGenAI, Chat, Content, Part, GenerateContentResponse } from '@google/genai';
-import { UserCircleIcon, SendHorizontalIcon, SparklesIcon, PlusIcon, MessageSquareIcon, PaperclipIcon, CopyIcon, RefreshCwIcon, Trash2Icon, XIcon, ImageIcon, FileTextIcon, GlobeIcon, MicIcon, MicOffIcon } from '../components/Icons';
+import { UserCircleIcon, SendHorizontalIcon, SparklesIcon, PlusIcon, MessageSquareIcon, PaperclipIcon, CopyIcon, RefreshCwIcon, Trash2Icon, XIcon, ImageIcon, FileTextIcon, GlobeIcon, MicIcon, MicOffIcon, MenuIcon, AlertTriangleIcon } from '../components/Icons';
 import { Button } from '../components/Button';
 import { fileToBase64, convertSvgToPng } from '../utils/fileUtils';
 import { useAuth } from '../contexts/AuthContext';
@@ -174,6 +174,8 @@ export const ChatPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [showHistorySidebar, setShowHistorySidebar] = useState(false);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
 
   const aiRef = useRef<GoogleGenAI | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -499,16 +501,16 @@ export const ChatPage: React.FC = () => {
               const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
               mediaRecorderRef.current = new MediaRecorder(stream);
               audioChunksRef.current = [];
-              
+
               mediaRecorderRef.current.ondataavailable = (event) => {
                   audioChunksRef.current.push(event.data);
               };
-              
+
               mediaRecorderRef.current.onstop = async () => {
                   const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
                   const audioFile = new File([audioBlob], "voice-input.webm", { type: 'audio/webm' });
                   stream.getTracks().forEach(track => track.stop());
-                  
+
                   addToast("Transcribing your voice...", 'info');
                   setIsLoading(true);
                   try {
@@ -525,7 +527,7 @@ export const ChatPage: React.FC = () => {
                       setIsLoading(false);
                   }
               };
-              
+
               mediaRecorderRef.current.start();
               setIsRecording(true);
           } catch (err) {
@@ -534,10 +536,166 @@ export const ChatPage: React.FC = () => {
       }
   };
 
+  const handleDeleteConversation = async (conversationId: string) => {
+    if (!user) return;
+
+    setConversations(prev => prev.filter(c => c.id !== conversationId));
+
+    if (activeConversationId === conversationId) {
+      const remaining = conversations.filter(c => c.id !== conversationId);
+      if (remaining.length > 0) {
+        setActiveConversationId(remaining[0].id);
+      } else {
+        handleNewChat();
+      }
+    }
+
+    if (!conversationId.startsWith('local-')) {
+      const { error } = await supabase
+        .from('conversations')
+        .delete()
+        .eq('id', conversationId)
+        .eq('user_id', user.id);
+
+      if (error) {
+        addToast('Failed to delete conversation.', 'error');
+      } else {
+        addToast('Conversation deleted.', 'success');
+      }
+    }
+  };
+
+  const handleDeleteAllConversations = async () => {
+    if (!user) return;
+
+    setIsLoading(true);
+    const { error } = await supabase
+      .from('conversations')
+      .delete()
+      .eq('user_id', user.id);
+
+    if (error) {
+      addToast('Failed to delete all conversations.', 'error');
+      setIsLoading(false);
+    } else {
+      setConversations([]);
+      setActiveConversationId(null);
+      handleNewChat();
+      addToast('All conversations deleted.', 'success');
+      setShowDeleteAllModal(false);
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="h-full flex flex-col">
-        <section className="flex-grow flex flex-col">
-            <div className="flex-grow overflow-y-auto chat-container p-4 md:p-6 space-y-8">
+    <div className="h-full flex">
+        {/* Chat History Sidebar */}
+        <div className={`${showHistorySidebar ? 'block' : 'hidden'} md:block w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col`}>
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">Chat History</h2>
+                <Button
+                    onClick={() => setShowDeleteAllModal(true)}
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                    disabled={conversations.length === 0}
+                >
+                    <Trash2Icon className="w-4 h-4 mr-2" />
+                    Delete All Chats
+                </Button>
+            </div>
+            <div className="flex-grow overflow-y-auto p-2 space-y-1">
+                {conversations.length === 0 ? (
+                    <p className="text-center text-slate-500 dark:text-slate-400 text-sm py-8">No conversations yet</p>
+                ) : (
+                    conversations.map((conv) => (
+                        <div
+                            key={conv.id}
+                            className={`group flex items-center gap-2 p-3 rounded-lg cursor-pointer transition-colors ${
+                                activeConversationId === conv.id
+                                    ? 'bg-teal-50 dark:bg-teal-950/30 text-teal-900 dark:text-teal-100'
+                                    : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                            }`}
+                        >
+                            <MessageSquareIcon className="w-4 h-4 flex-shrink-0" />
+                            <button
+                                onClick={() => setActiveConversationId(conv.id)}
+                                className="flex-grow text-left text-sm truncate"
+                            >
+                                {conv.title}
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteConversation(conv.id);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-950/50 rounded transition-opacity"
+                                aria-label="Delete conversation"
+                            >
+                                <Trash2Icon className="w-4 h-4 text-red-600 dark:text-red-400" />
+                            </button>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+
+        {/* Delete All Confirmation Modal */}
+        {showDeleteAllModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                    <div className="flex items-start gap-4 mb-4">
+                        <div className="p-2 bg-red-100 dark:bg-red-950/30 rounded-full">
+                            <AlertTriangleIcon className="w-6 h-6 text-red-600 dark:text-red-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                                Delete All Conversations?
+                            </h3>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                                This will permanently delete all your chat history. This action cannot be undone.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex gap-3 justify-end">
+                        <Button
+                            onClick={() => setShowDeleteAllModal(false)}
+                            variant="outline"
+                            size="md"
+                            disabled={isLoading}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleDeleteAllConversations}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            size="md"
+                            disabled={isLoading}
+                        >
+                            {isLoading ? 'Deleting...' : 'Delete All'}
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* Main Chat Area */}
+        <div className="flex-grow flex flex-col">
+            {/* Mobile Header with Sidebar Toggle */}
+            <div className="md:hidden flex items-center gap-2 p-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                <button
+                    onClick={() => setShowHistorySidebar(!showHistorySidebar)}
+                    className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                >
+                    <MenuIcon className="w-5 h-5" />
+                </button>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                    {activeConversation?.title || 'Chat'}
+                </h2>
+            </div>
+
+            <section className="flex-grow flex flex-col">
+                <div className="flex-grow overflow-y-auto chat-container p-4 md:p-6 space-y-8">
                 {(!activeConversation || activeConversation.messages.length <= 1) && (
                     <div className="text-center h-full flex flex-col justify-center items-center">
                         <SparklesIcon className="w-16 h-16 mx-auto text-slate-400 dark:text-slate-500 mb-4" />
@@ -609,6 +767,7 @@ export const ChatPage: React.FC = () => {
                 </form>
             </div>
         </section>
+        </div>
     </div>
   );
 };
