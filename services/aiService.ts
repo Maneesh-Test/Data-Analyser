@@ -20,7 +20,7 @@ const trackUsage = () => {
 
 const getGoogleAI = () => {
     if (!googleAI) {
-        const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
         if (!apiKey) {
             throw new Error('Gemini API key is not configured. Please check your environment variables.');
         }
@@ -48,7 +48,7 @@ const getProviderAndModel = (modelId: string) => {
 const getApiKey = (providerId: string): string => {
     // For Google, the key is handled by the environment.
     if (providerId === 'google') {
-        const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
         if (!apiKey) {
             throw new Error('Gemini API key is not configured. Please check your environment variables.');
         }

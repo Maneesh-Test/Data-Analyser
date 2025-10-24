@@ -91,7 +91,7 @@ export const ChatWithFilePage: React.FC<ChatWithFilePageProps> = ({ mode, naviga
   }, [mode]);
 
   useEffect(() => {
-    aiRef.current = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    aiRef.current = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
   }, []);
 
   useEffect(() => {

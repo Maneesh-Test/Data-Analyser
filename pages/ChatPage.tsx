@@ -207,7 +207,7 @@ export const ChatPage: React.FC = () => {
 
   // Initial setup and loading conversations from DB
   useEffect(() => {
-    aiRef.current = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    aiRef.current = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
     const loadConversations = async () => {
         if (user) {
