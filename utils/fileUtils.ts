@@ -1,4 +1,5 @@
 
+
 export const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -42,4 +43,62 @@ export const downloadTextFile = (content: string, filename: string) => {
   
   document.body.removeChild(anchor);
   URL.revokeObjectURL(url);
+};
+
+/**
+ * Converts an SVG file to a PNG file using the browser's canvas API.
+ * This is used to support SVG uploads for analysis by Gemini, which requires raster image formats.
+ * @param svgFile The SVG file to convert.
+ * @returns A promise that resolves with the converted PNG file.
+ */
+export const convertSvgToPng = (svgFile: File): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = (e: ProgressEvent<FileReader>) => {
+      const img = new Image();
+
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const padding = 10;
+        canvas.width = img.width + padding * 2;
+        canvas.height = img.height + padding * 2;
+        const ctx = canvas.getContext('2d');
+
+        if (!ctx) {
+          return reject(new Error('Could not get canvas rendering context.'));
+        }
+        
+        // Fill background with white since PNG supports transparency and SVGs may not have a background.
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, padding, padding);
+
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            return reject(new Error('Failed to convert canvas to Blob.'));
+          }
+          const pngFileName = svgFile.name.replace(/\.svg$/i, '.png');
+          const pngFile = new File([blob], pngFileName, { type: 'image/png' });
+          resolve(pngFile);
+        }, 'image/png');
+      };
+
+      img.onerror = () => {
+        reject(new Error('The SVG file could not be loaded. It might be invalid or contain unsupported features.'));
+      };
+      
+      if (e.target?.result) {
+        img.src = e.target.result as string;
+      } else {
+        reject(new Error('Failed to read SVG file content.'));
+      }
+    };
+
+    reader.onerror = () => {
+      reject(new Error('Error reading the SVG file.'));
+    };
+
+    reader.readAsDataURL(svgFile);
+  });
 };

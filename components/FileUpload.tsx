@@ -24,6 +24,10 @@ const SUPPORTED_MIME_TYPES = [
   'image/png',
   'image/jpeg',
   'image/gif',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'image/svg+xml', // for conversion
 ];
 
 
@@ -41,6 +45,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [isDropped, setIsDropped] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isProModel = selectedModel?.id === 'gemini-2.5-pro';
 
   const processFiles = useCallback((files: File[]) => {
     setDropError(null);
@@ -158,7 +163,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                   <span className="font-semibold text-teal-600 dark:text-teal-400">Click to upload</span>
                   <span className="mt-1 sm:mt-0 sm:ml-1">or drag and drop</span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-500">PDF, TXT, PNG, JPG, GIF up to 10MB</p>
+              <p className="text-xs text-slate-500 dark:text-slate-500">PDF, TXT, images (PNG, JPG, SVG) up to 10MB</p>
           </>
       );
   }
@@ -186,7 +191,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             className="hidden"
             multiple
             onChange={handleFileChange}
-            accept=".pdf,.txt,.png,.jpg,.jpeg,.gif"
+            accept=".pdf,.txt,.png,.jpg,.jpeg,.gif,.webp,.heic,.heif,.svg"
             disabled={isLoading}
         />
       </div>
@@ -211,7 +216,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                 disabled={isLoading}
             />
             <label htmlFor="with-reasoning" className="text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
-                Include step-by-step reasoning
+                {isProModel ? 'Enable Thinking Mode' : 'Include step-by-step reasoning'}
             </label>
         </div>
       </div>

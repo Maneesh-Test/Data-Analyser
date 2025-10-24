@@ -1,8 +1,6 @@
-// IMPORTANT: Replace this placeholder with your actual, new n8n Webhook URL.
-// Your ngrok URL is temporary and changes every time you restart it.
-// 1. Get your new URL from the ngrok terminal (e.g., https://something-new.ngrok-free.dev).
-// 2. Combine it with your n8n webhook path (e.g., /webhook/your-webhook-id).
-export const N8N_LOGIN_WEBHOOK_URL = 'https://overtimid-dissipative-georgene.ngrok-free.dev/webhook-test/check-add-user';
-
-// Add a new webhook URL for the signup process.
-export const N8N_SIGNUP_WEBHOOK_URL = 'https://overtimid-dissipative-georgene.ngrok-free.dev/webhook-test/check-add-user';
+// IMPORTANT: Replace these placeholders with your actual Supabase project URL and anon key.
+// 1. Go to your Supabase project dashboard.
+// 2. Navigate to Project Settings > API.
+// 3. Find your Project URL and anon Public key.
+export const SUPABASE_URL = 'https://vmhoholpeieigwcfpffb.supabase.co';
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtaG9ob2xwZWllaWd3Y2ZwZmZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MTU0MTgsImV4cCI6MjA3NTk5MTQxOH0.6WuoycX7nCSErM3Zfi1Uf3EMrYaz2MEKfnSguwi9Nb8';

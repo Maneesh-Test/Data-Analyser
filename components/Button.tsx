@@ -9,7 +9,7 @@ const Button = React.forwardRef<
     isLoading?: boolean;
   }
 >(({ className = '', variant = 'primary', size = 'md', isLoading = false, children, ...props }, ref) => {
-  const baseClasses = 'inline-flex items-center justify-center rounded-lg font-semibold outline-none transition-all duration-300 ease-in-out focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900 disabled:pointer-events-none disabled:opacity-50';
+  const baseClasses = 'inline-flex items-center justify-center rounded-lg font-semibold outline-none transition-all duration-300 ease-in-out focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900 disabled:pointer-events-none disabled:opacity-50 flex-shrink-0';
   
   const variantClasses = {
     primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus-visible:ring-indigo-500 shadow-sm',

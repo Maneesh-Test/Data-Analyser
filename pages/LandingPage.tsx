@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { LoginModal } from '../components/LoginModal';
 import { 
     LogoIcon, ZapIcon, FileTextIcon, ImageIcon, CpuIcon, QuoteIcon, BrainCircuitIcon, 
-    GoogleIcon, OpenAIIcon, AnthropicIcon, ChevronDownIcon
+    GoogleIcon, OpenAIIcon, AnthropicIcon, ChevronDownIcon, ArrowRightIcon
 } from '../components/Icons';
 import { Button } from '../components/Button';
 import { Footer } from '../components/Footer';
 import { Page } from '../App';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { useAuth } from '../contexts/AuthContext';
 
 // Custom hook to detect when an element is on screen for animations
 const useOnScreen = (options: IntersectionObserverInit) => {
@@ -171,37 +172,26 @@ const FEATURE_CATEGORIES = (navigateTo: (page: Page) => void): FeatureCategory[]
     title: 'AI Tools',
     features: [
       { name: 'AI Chatbot', action: () => navigateTo('chat'), requiresAuth: true },
-      { name: 'ChatPDF', action: () => {}, requiresAuth: true },
-      { name: 'ChatDoc', action: () => {}, requiresAuth: true },
-      { name: 'AI Summarizer', action: () => {}, requiresAuth: true },
-      { name: 'AI Report Generator', action: () => {}, requiresAuth: true }
-    ]
-  },
-  {
-    title: 'Data Connectors',
-    features: [
-        { name: 'Excel AI Analysis', action: () => {}, requiresAuth: true },
-        { name: 'CSV AI Analysis', action: () => {}, requiresAuth: true },
-        { name: 'TSV AI Analysis', action: () => {}, requiresAuth: true },
-        { name: 'AI SQL Chatbot', action: () => {}, requiresAuth: true },
-        { name: 'Chat with Database', action: () => {}, requiresAuth: true },
-        { name: 'Text to SQL', action: () => {}, requiresAuth: true }
+      { name: 'ChatPDF', action: () => navigateTo('chat-pdf'), requiresAuth: true },
+      { name: 'ChatDoc', action: () => navigateTo('chat-doc'), requiresAuth: true },
+      { name: 'AI Summarizer', action: () => navigateTo('summarizer'), requiresAuth: true },
+      { name: 'AI Report Generator', action: () => navigateTo('report-generator'), requiresAuth: true }
     ]
   },
   {
     title: 'Advanced Analytics',
     features: [
-        { name: 'Data Visualization', action: () => {}, requiresAuth: true },
-        { name: 'AI Graph Maker', action: () => {}, requiresAuth: true },
-        { name: 'ChatBI', action: () => {}, requiresAuth: true },
-        { name: 'AI Data Cleaning', action: () => {}, requiresAuth: true }
+        { name: 'Data Visualization', action: () => navigateTo('data-visualization'), requiresAuth: true },
+        { name: 'AI Graph Maker', action: () => navigateTo('data-visualization'), requiresAuth: true },
+        { name: 'ChatBI', action: () => navigateTo('chat-bi'), requiresAuth: true },
+        { name: 'AI Data Cleaning', action: () => navigateTo('data-cleaning'), requiresAuth: true }
     ]
   },
   {
     title: 'Collaboration',
     features: [
-        { name: 'Dataset Sharing', action: () => {}, requiresAuth: true },
-        { name: 'Chat Sharing', action: () => {}, requiresAuth: true }
+        { name: 'Dataset Sharing', action: () => navigateTo('collaboration'), requiresAuth: true },
+        { name: 'Chat Sharing', action: () => navigateTo('collaboration'), requiresAuth: true }
     ]
   }
 ];
@@ -209,6 +199,7 @@ const FEATURE_CATEGORIES = (navigateTo: (page: Page) => void): FeatureCategory[]
 export const LandingPage: React.FC<LandingPageProps> = ({ navigateTo }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFeaturesOpen, setIsFeaturesOpen] = useState(false);
+  const { isAuthenticated } = useAuth();
   
   const [howItWorksRef, isHowItWorksVisible] = useOnScreen({ threshold: 0.1 });
   const [featuresRef, isFeaturesVisible] = useOnScreen({ threshold: 0.1 });
@@ -234,7 +225,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ navigateTo }) => {
   }, [isFeaturesOpen]);
 
   const handleFeatureClick = (feature: Feature) => {
-    if (feature.requiresAuth) {
+    if (feature.requiresAuth && !isAuthenticated) {
       setIsModalOpen(true);
     } else {
       feature.action();
@@ -251,7 +242,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ navigateTo }) => {
         <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800 sticky top-0 z-20">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
             <div className="flex items-center gap-8">
-              <a href="#" className="inline-flex items-center gap-3">
+              <a href="#" onClick={(e) => { e.preventDefault(); navigateTo('landing'); }} className="inline-flex items-center gap-3">
                 <LogoIcon className="h-8 w-8 text-teal-600" />
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                   Prism AI
@@ -273,7 +264,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ navigateTo }) => {
                   {isFeaturesOpen && (
                     <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-screen max-w-4xl animate-slide-up-fade-in" style={{animationDuration: '0.3s'}}>
                       <div className="bg-slate-900/95 dark:bg-[#1C1C1C]/95 backdrop-blur-lg rounded-xl shadow-2xl p-8 text-white">
-                        <div className="grid grid-cols-4 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                           {featureCategories.map(category => (
                             <div key={category.title}>
                               <h3 className="text-sm font-semibold text-slate-400 mb-4">{category.title}</h3>
@@ -293,16 +284,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({ navigateTo }) => {
                     </div>
                   )}
                 </div>
+                <button 
+                    onClick={() => navigateTo('pricing')}
+                    className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors text-sm font-medium"
+                >
+                    Pricing
+                </button>
               </nav>
             </div>
             <div className="flex items-center gap-2 sm:gap-4">
               <ThemeToggle />
-              <Button onClick={() => setIsModalOpen(true)} variant="secondary" size="md">
-                Login
-              </Button>
-              <Button onClick={() => setIsModalOpen(true)} variant="teal" size="md" className="hidden sm:inline-flex">
-                Get Started
-              </Button>
+              {isAuthenticated ? (
+                <Button onClick={() => navigateTo('dashboard')} variant="teal" size="md" className="gap-2">
+                  <span>Dashboard</span>
+                  <ArrowRightIcon className="w-4 h-4" />
+                </Button>
+              ) : (
+                <>
+                  <Button onClick={() => setIsModalOpen(true)} variant="secondary" size="md">
+                    Login
+                  </Button>
+                  <Button onClick={() => setIsModalOpen(true)} variant="teal" size="md" className="hidden sm:inline-flex">
+                    Get Started
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </header>
@@ -319,7 +325,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ navigateTo }) => {
                   Prism AI leverages state-of-the-art language models to analyze your documents, images, and more. Simply upload a file and get a detailed, structured analysis in seconds.
                 </p>
                 <div className="mt-10 flex justify-center gap-4">
-                  <Button onClick={() => setIsModalOpen(true)} variant="teal-gradient" size="lg" className="gap-2.5">
+                  <Button onClick={() => isAuthenticated ? navigateTo('dashboard') : setIsModalOpen(true)} variant="teal-gradient" size="lg" className="gap-2.5">
                     <ZapIcon className="h-5 w-5" />
                     Start Analyzing for Free
                   </Button>
@@ -408,7 +414,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ navigateTo }) => {
                  </div>
               </div>
               <div className="text-center mt-12">
-                 <Button onClick={() => setIsModalOpen(true)} variant="teal-gradient" size="lg">Sign Up & Analyze for Free</Button>
+                 <Button onClick={() => isAuthenticated ? navigateTo('dashboard') : setIsModalOpen(true)} variant="teal-gradient" size="lg">Sign Up & Analyze for Free</Button>
               </div>
             </div>
           </section>

@@ -1,74 +1,95 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { authService } from '../services/authService';
-
-interface User {
-  email: string;
-}
+import type { User, Session, Provider } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  authEvent: string | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  sendPasswordReset: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
+  loginWithProvider: (provider: Provider) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authEvent, setAuthEvent] = useState<string | null>(null);
 
-  // This effect simulates checking for an existing session on app load.
   useEffect(() => {
-    // In a real app, you might check for a token in localStorage.
-    // For this example, we assume the user is not logged in initially.
-    setIsLoading(false);
+    const checkSession = async () => {
+      const currentSession = await authService.getSession();
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+      setIsLoading(false);
+    };
+
+    checkSession();
+
+    const subscription = authService.onAuthStateChange((event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setAuthEvent(event);
+      // Reset event after a short delay for non-recovery events to avoid sticky state
+      if (event !== 'PASSWORD_RECOVERY') {
+        setTimeout(() => setAuthEvent(null), 500);
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, []);
 
+
   const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      await authService.loginWithEmail(email, password);
-      // Since the provided authService is fire-and-forget, we optimistically
-      // set the user state upon a successful API call.
-      setUser({ email });
-    } catch (error) {
-      console.error('Login failed:', error);
-      setUser(null);
-      throw error; // Re-throw to be handled by the UI component
-    } finally {
-      setIsLoading(false);
-    }
+    await authService.loginWithEmail(email, password);
   };
   
   const signup = async (email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      await authService.signupWithEmail(email, password);
-      // After signup, we don't automatically log the user in.
-      // The UI will show a message to check for a verification email.
-    } catch (error) {
-      console.error('Signup failed:', error);
-      throw error; // Re-throw to be handled by the UI component
-    } finally {
-      setIsLoading(false);
-    }
+    await authService.signupWithEmail(email, password);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await authService.logout();
     setUser(null);
-    // In a real app, you would also clear any stored tokens or session data.
+    setSession(null);
+  };
+  
+  const sendPasswordReset = async (email: string) => {
+    await authService.sendPasswordResetEmail(email);
+  };
+
+  const updatePassword = async (password: string) => {
+    await authService.updateUserPassword(password);
+    // Manually clear the recovery event state after a successful update
+    setAuthEvent(null);
+  };
+
+  const loginWithProvider = async (provider: Provider) => {
+    await authService.loginWithProvider(provider);
   };
 
   const value = {
     user,
+    session,
     isAuthenticated: !!user,
     isLoading,
+    authEvent,
     login,
     signup,
     logout,
+    sendPasswordReset,
+    updatePassword,
+    loginWithProvider,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,22 +1,26 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { FileUpload } from '../components/FileUpload';
 import { FileProgress } from '../components/FileProgress';
-import { BarChartIcon, ListOrderedIcon, ImageIcon, PdfIcon, FileTextIcon } from '../components/Icons';
+import { BarChartIcon, ListOrderedIcon, ImageIcon, PdfIcon, FileTextIcon, ArrowRightIcon } from '../components/Icons';
 import { UploadedFile, UploadStatus } from '../types';
 import { analyzeFile } from '../services/aiService';
 import { LLM_PROVIDERS, Model } from '../lib/models';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { convertSvgToPng } from '../utils/fileUtils';
+import { Page } from '../App';
+import { supabase } from '../supabase/client';
 
 interface InfoBlockProps {
   icon: React.ReactNode;
   title: string;
   description: string;
   ctaText?: string;
-  ctaLink?: string;
+  ctaPage?: Page;
+  onCtaClick?: (page: Page) => void;
 }
 
-const InfoBlock: React.FC<InfoBlockProps> = ({ icon, title, description, ctaText, ctaLink = '#' }) => (
+const InfoBlock: React.FC<InfoBlockProps> = ({ icon, title, description, ctaText, ctaPage, onCtaClick }) => (
     <div className="group relative p-5 bg-white/60 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 overflow-hidden transition-all duration-300 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-2xl hover:-translate-y-1 backdrop-blur-lg">
         <div className="absolute -top-4 -right-4 w-24 h-24 bg-teal-500/10 dark:bg-teal-500/20 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
         <div className="relative flex items-start gap-4">
@@ -26,14 +30,19 @@ const InfoBlock: React.FC<InfoBlockProps> = ({ icon, title, description, ctaText
             <div>
                 <h3 className="font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{description}</p>
-                 {ctaText && <a href={ctaLink} onClick={(e) => e.preventDefault()} className="text-sm font-semibold text-teal-600 dark:text-teal-400 mt-2 inline-block group-hover:underline">{ctaText} &rarr;</a>}
+                 {ctaText && ctaPage && onCtaClick && (
+                    <button onClick={() => onCtaClick(ctaPage)} className="inline-flex items-center gap-1.5 text-sm font-semibold text-teal-600 dark:text-teal-400 mt-2 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
+                        <span>{ctaText}</span>
+                        <ArrowRightIcon className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+                    </button>
+                 )}
             </div>
         </div>
     </div>
 );
 
 
-export const DashboardPage: React.FC = () => {
+export const DashboardPage: React.FC<{ navigateTo: (page: Page) => void }> = ({ navigateTo }) => {
   const { user } = useAuth();
   const { addToast } = useToast();
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
@@ -52,7 +61,8 @@ export const DashboardPage: React.FC = () => {
     ));
     
     try {
-      const result = await analyzeFile(fileData.file, model.id, reasoning);
+      const useThinkingMode = model.id === 'gemini-2.5-pro' && reasoning;
+      const result = await analyzeFile(fileData.file, model.id, reasoning, useThinkingMode);
       setUploadedFiles(prev => prev.map(f =>
         f.id === fileData.id ? { ...f, status: UploadStatus.COMPLETED, analysis: result.analysis, providerName: result.providerName, modelName: result.modelName } : f
       ));
@@ -72,25 +82,57 @@ export const DashboardPage: React.FC = () => {
       setModelSelectionError('Please select a model before uploading files.');
       return;
     }
+    if (!user) {
+        addToast('You must be logged in to upload files.', 'error');
+        return;
+    }
     setModelSelectionError(null);
     setIsLoading(true);
 
-    const newFilesData: UploadedFile[] = files.map((file, index) => {
-      const previewUrl = URL.createObjectURL(file);
-      return {
-        id: `${file.name}-${Date.now()}-${index}`,
-        file,
-        progress: 0,
-        status: UploadStatus.UPLOADING,
-        previewUrl,
-        analysis: null,
-      };
+    const newFilesDataPromises = files.map(async (file, index) => {
+        let fileToUpload = file;
+        // Handle SVG conversion before upload
+        if (file.type === 'image/svg+xml') {
+            try {
+                fileToUpload = await convertSvgToPng(file);
+                addToast(`Converted ${file.name} to PNG for analysis.`, 'info');
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Unknown conversion error.';
+                addToast(`Failed to convert ${file.name}: ${message}`, 'error');
+                return null;
+            }
+        }
+        
+        // Upload to Supabase Storage
+        const filePath = `${user.id}/${Date.now()}_${fileToUpload.name}`;
+        const { error: uploadError } = await supabase.storage.from('uploads').upload(filePath, fileToUpload);
+        
+        if (uploadError) {
+            addToast(`Failed to upload ${file.name}: ${uploadError.message}`, 'error');
+            return null;
+        }
+
+        // Create a local blob URL for previews. This avoids CORS issues and is much faster.
+        const previewUrl = URL.createObjectURL(fileToUpload);
+
+        return {
+            id: `${file.name}-${Date.now()}-${index}`,
+            file: fileToUpload,
+            progress: 0,
+            status: UploadStatus.UPLOADING,
+            previewUrl: previewUrl,
+            analysis: null,
+        };
     });
+
+    const settledFiles = await Promise.all(newFilesDataPromises);
+    const newFilesData = settledFiles.filter((f): f is UploadedFile => f !== null);
 
     setUploadedFiles(prev => [...newFilesData, ...prev]);
 
     const analysisPromises = newFilesData.map(fileData =>
       new Promise<void>(resolve => {
+        // Simulate upload progress before analysis
         const interval = setInterval(() => {
           setUploadedFiles(prevFiles => {
             let fileUploadFinished = false;
@@ -123,15 +165,13 @@ export const DashboardPage: React.FC = () => {
   };
 
   const handleRemoveFile = (id: string) => {
-    const fileName = uploadedFiles.find(f => f.id === id)?.file.name || 'File';
-    setUploadedFiles(prev => prev.filter(f => {
-      if (f.id === id) {
-        URL.revokeObjectURL(f.previewUrl);
-        return false;
-      }
-      return true;
-    }));
-    addToast(`${fileName} removed.`, 'success');
+    const fileToRemove = uploadedFiles.find(f => f.id === id);
+    if (fileToRemove) {
+      // Revoke the blob URL to free up memory before removing from state.
+      URL.revokeObjectURL(fileToRemove.previewUrl);
+      addToast(`${fileToRemove.file.name} removed.`, 'success');
+    }
+    setUploadedFiles(prev => prev.filter(f => f.id !== id));
   };
   
   const handleReanalyze = (id: string) => {
@@ -159,18 +199,24 @@ export const DashboardPage: React.FC = () => {
                 title="Deep Analysis"
                 description="Extract summaries and key points from any document."
                 ctaText="Learn More"
+                ctaPage="deep-analysis"
+                onCtaClick={navigateTo}
               />
               <InfoBlock 
                 icon={<ListOrderedIcon className="w-6 h-6 text-sky-600" />}
                 title="Structured Output"
                 description="Receive clean, predictable JSON for easy integration."
                 ctaText="View Docs"
+                ctaPage="structured-output"
+                onCtaClick={navigateTo}
               />
               <InfoBlock 
                 icon={<ImageIcon className="w-6 h-6 text-indigo-600" />}
                 title="Multi-Modal Power"
                 description="Analyze text, complex PDFs, and detailed images."
                 ctaText="See Examples"
+                ctaPage="multi-modal-power"
+                onCtaClick={navigateTo}
               />
           </div>
 

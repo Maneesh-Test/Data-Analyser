@@ -66,7 +66,16 @@ export const PdfPreview: React.FC<PdfPreviewProps> = ({ fileUrl }) => {
       setCurrentPage(1); // Reset to first page on new file
 
       try {
-        const loadingTask = pdfjsLib.getDocument(fileUrl);
+        // Manually fetch the PDF to handle potential CORS or network issues more robustly.
+        // This is better than passing a URL directly to pdfjsLib.
+        const response = await fetch(fileUrl);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch PDF file: ${response.status} ${response.statusText}`);
+        }
+        const pdfData = await response.arrayBuffer();
+        
+        // Pass the ArrayBuffer to pdf.js
+        const loadingTask = pdfjsLib.getDocument({ data: pdfData });
         const pdf = await loadingTask.promise;
         pdfDoc.current = pdf;
         
@@ -84,7 +93,16 @@ export const PdfPreview: React.FC<PdfPreviewProps> = ({ fileUrl }) => {
 
       } catch (e) {
         console.error('Error loading PDF:', e);
-        if (isMounted) setError('Could not load PDF document.');
+        if (isMounted) {
+            const message = (e as any)?.message || '';
+            if (message.includes('Password required')) {
+                setError('PDF is password-protected and cannot be previewed.');
+            } else if (message.includes('Invalid PDF structure')) {
+                setError('This does not appear to be a valid PDF file.');
+            } else {
+                setError('Could not load PDF document.');
+            }
+        }
       } finally {
          if (isMounted) setLoading(false);
       }

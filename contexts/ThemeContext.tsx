@@ -1,45 +1,58 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode, useCallback } from 'react';
 
-type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark' | 'system';
 
 interface ThemeContextType {
   theme: Theme;
-  toggleTheme: () => void;
+  setTheme: (theme: Theme) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setThemeState] = useState<Theme>('system');
 
-  // Initialize theme from localStorage or system preference on mount
+  // Initialize theme from localStorage on mount
   useEffect(() => {
     const storedTheme = localStorage.getItem('theme') as Theme | null;
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     if (storedTheme) {
-      setTheme(storedTheme);
-    } else if (prefersDark) {
-      setTheme('dark');
+      setThemeState(storedTheme);
     }
   }, []);
 
-  // Effect to update the DOM and localStorage when theme changes
+  const setTheme = useCallback((newTheme: Theme) => {
+    setThemeState(newTheme);
+    localStorage.setItem('theme', newTheme);
+  }, []);
+
+  // Effect to update the DOM when theme changes
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
+    const root = document.documentElement;
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+    const applyTheme = (currentTheme: Theme) => {
+        if (currentTheme === 'dark' || (currentTheme === 'system' && systemPrefersDark.matches)) {
+            root.classList.add('dark');
+        } else {
+            root.classList.remove('dark');
+        }
+    };
+    
+    applyTheme(theme);
+    
+    const handleChange = (e: MediaQueryListEvent) => {
+        if (theme === 'system') {
+            applyTheme('system');
+        }
+    };
+
+    systemPrefersDark.addEventListener('change', handleChange);
+    return () => systemPrefersDark.removeEventListener('change', handleChange);
   }, [theme]);
 
-  const toggleTheme = useCallback(() => {
-    setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
-  }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );

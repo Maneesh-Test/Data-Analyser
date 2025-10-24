@@ -1,60 +1,85 @@
-import { N8N_LOGIN_WEBHOOK_URL, N8N_SIGNUP_WEBHOOK_URL } from '../config';
+import { supabase } from '../supabase/client';
+import type { Session, Provider } from '@supabase/supabase-js';
 
 export const authService = {
-  /**
-   * Sends user credentials to an n8n webhook, navigating ngrok and CORS issues.
-   * This function is carefully crafted to solve a browser/webhook Catch-22:
-   * 1. ngrok's free tier requires a custom 'ngrok-skip-browser-warning' header.
-   * 2. Adding a custom header triggers a browser CORS preflight (OPTIONS) request.
-   * 3. The n8n webhook cannot handle the OPTIONS preflight, causing a 500 error.
-   *
-   * The solution is to use `mode: 'no-cors'`, which sends the POST request
-   * with our custom header but prevents the browser from sending the problematic
-   * OPTIONS preflight. We also let the browser handle the Content-Type for
-   * maximum compatibility.
-   */
-  loginWithEmail: async (email: string, password: string): Promise<void> => {
-    if (N8N_LOGIN_WEBHOOK_URL.includes('PASTE_YOUR_NEW_N8N_WEBHOOK_URL_HERE') || N8N_LOGIN_WEBHOOK_URL.includes('your-webhook-id')) {
-      throw new Error('Please update the N8N_LOGIN_WEBHOOK_URL in config.ts with your actual ngrok webhook URL.');
-    }
-    
-    const formData = new URLSearchParams();
-    formData.append('email', email);
-    formData.append('password', password);
-
-    await fetch(N8N_LOGIN_WEBHOOK_URL, {
-        method: 'POST',
-        mode: 'no-cors', // Prevents CORS preflight which n8n webhook doesn't handle.
-        headers: {
-            // Necessary to bypass the ngrok free tier browser warning page.
-            'ngrok-skip-browser-warning': 'true',
-        },
-        // Let the browser automatically set the 'Content-Type' header
-        // by passing the URLSearchParams object directly.
-        body: formData,
+  loginWithEmail: async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
-
-    // NOTE: With 'mode: no-cors', we cannot inspect the response status or body.
-    // We must optimistically assume the request succeeded if fetch() itself does not
-    // throw a network error.
+    if (error) throw error;
+    return data;
   },
 
-  signupWithEmail: async (email: string, password: string): Promise<void> => {
-    if (N8N_SIGNUP_WEBHOOK_URL.includes('PASTE_YOUR_NEW_N8N_WEBHOOK_URL_HERE') || N8N_SIGNUP_WEBHOOK_URL.includes('your-signup-webhook-id')) {
-      throw new Error('Please update the N8N_SIGNUP_WEBHOOK_URL in config.ts with your actual ngrok webhook URL.');
-    }
-    
-    const formData = new URLSearchParams();
-    formData.append('email', email);
-    formData.append('password', password);
-
-    await fetch(N8N_SIGNUP_WEBHOOK_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-            'ngrok-skip-browser-warning': 'true',
-        },
-        body: formData,
+  signupWithEmail: async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
     });
+    // Supabase sends a confirmation email by default.
+    // The error for an existing user is helpful and will be displayed in the UI.
+    if (error) throw error;
+    return data;
+  },
+  
+  logout: async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  },
+  
+  getUser: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    return user;
+  },
+  
+  getSession: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      return session;
+  },
+  
+  onAuthStateChange: (callback: (event: string, session: Session | null) => void) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(callback);
+      return subscription;
+  },
+
+  sendPasswordResetEmail: async (email: string) => {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin, // Redirect back to the app's base URL
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  updateUserPassword: async (password: string) => {
+    const { data, error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+    return data;
+  },
+
+  loginWithProvider: async (provider: Provider) => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: window.location.origin,
+        // This flag prevents the Supabase client from automatically redirecting the browser.
+        // We need this so we can control the redirect and ensure it happens in the top-level window, not in an iframe.
+        skipBrowserRedirect: true,
+      },
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    if (data.url) {
+      // Manually redirect the top-level window to break out of the iframe.
+      // This is the key to fixing the "refused to connect" error with Google OAuth.
+      // We use window.open with target '_top' as a more robust way to navigate
+      // the top-level window, which is less likely to be blocked by sandboxing policies
+      // than a direct assignment to window.top.location.href.
+      window.open(data.url, '_top');
+    } else {
+      throw new Error('Could not get OAuth URL from Supabase.');
+    }
   },
 };

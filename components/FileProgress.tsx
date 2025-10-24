@@ -320,7 +320,7 @@ export const FileProgress: React.FC<FileProgressProps> = ({ fileData, onRemove, 
                           <AnalysisRenderer analysis={fileData.analysis} />
                         </div>
                         {isFinished && (
-                            <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 flex items-center gap-6">
+                            <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 flex flex-wrap items-center gap-x-6 gap-y-2">
                                 <ActionButton onClick={handleShare} disabled={!hasAnalysis || isSharing} icon={<ShareIcon className="w-4 h-4" />} title={!hasAnalysis ? "Analysis not available" : "Share analysis"}>{shareText}</ActionButton>
                                 <ActionButton onClick={handleExport} disabled={!hasAnalysis} icon={<DownloadIcon className="w-4 h-4" />} title={!hasAnalysis ? "Analysis not available" : "Export analysis as a .txt file"}>Export</ActionButton>
                                 <ActionButton

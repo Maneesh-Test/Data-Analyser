@@ -4,6 +4,8 @@ import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { PreferencesProvider } from './contexts/PreferencesContext';
+import { ChatProvider } from './contexts/ChatContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -14,11 +16,15 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <ThemeProvider>
-      <ToastProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </ToastProvider>
+      <PreferencesProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <ChatProvider>
+              <App />
+            </ChatProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </PreferencesProvider>
     </ThemeProvider>
   </React.StrictMode>
 );

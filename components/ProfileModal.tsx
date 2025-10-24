@@ -1,6 +1,5 @@
 import React from 'react';
-import { Button } from './Button';
-import { XIcon, LogOutIcon, UserCircleIcon } from './Icons';
+import { XIcon, UserCircleIcon } from './Icons';
 import { useAuth } from '../contexts/AuthContext';
 
 interface ProfileModalProps {
@@ -8,12 +7,7 @@ interface ProfileModalProps {
 }
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
-  const { user, logout } = useAuth();
-
-  const handleLogout = () => {
-    logout();
-    onClose();
-  };
+  const { user } = useAuth();
 
   return (
     <div 
@@ -35,22 +29,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
           <UserCircleIcon className="h-20 w-20 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
           
           <h2 id="profile-modal-title" className="text-xl font-bold text-slate-900 dark:text-white mb-1">
-            Account
+            Account Details
           </h2>
-          <p className="text-slate-500 dark:text-slate-400 mb-6 truncate">
-            {user ? user.email : 'Not logged in'}
+          <p className="text-slate-500 dark:text-slate-400 mb-6 truncate" title={user?.email || 'Not logged in'}>
+            Logged in as: <strong>{user ? user.email : 'Not logged in'}</strong>
           </p>
-
-          <div className="mt-6 border-t border-slate-200 dark:border-slate-700 pt-6">
-            <Button 
-                onClick={handleLogout} 
-                variant="secondary" 
-                className="w-full gap-2"
-            >
-              <LogOutIcon className="h-5 w-5" />
-              Sign Out
-            </Button>
-          </div>
         </div>
       </div>
     </div>

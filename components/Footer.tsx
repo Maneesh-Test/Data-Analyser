@@ -29,6 +29,7 @@ export const Footer: React.FC<FooterProps> = ({ navigateTo }) => {
                         <ul className="space-y-3">
                             {/* These links scroll on the landing page. On other pages, they navigate to the landing page. */}
                             <li><a href="/#features" onClick={(e) => { e.preventDefault(); navigateTo('landing'); setTimeout(() => document.getElementById('features')?.scrollIntoView(), 0); }} className="hover:text-white transition-colors">Features</a></li>
+                            <li><button onClick={() => navigateTo('pricing')} className="hover:text-white transition-colors">Pricing</button></li>
                             <li><a href="/#how-it-works" onClick={(e) => { e.preventDefault(); navigateTo('landing'); setTimeout(() => document.getElementById('how-it-works')?.scrollIntoView(), 0);}} className="hover:text-white transition-colors">How it Works</a></li>
                             <li><a href="/#testimonials" onClick={(e) => { e.preventDefault(); navigateTo('landing'); setTimeout(() => document.getElementById('testimonials')?.scrollIntoView(), 0);}} className="hover:text-white transition-colors">Testimonials</a></li>
                         </ul>

@@ -21,6 +21,11 @@ export const LLM_PROVIDERS: LLMProvider[] = [
     models: [
       { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Advanced reasoning for complex tasks.', active: true, tags: ['max'] },
       { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Fast and versatile for most tasks.', active: true },
+      { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', description: 'The absolute fastest model for low-latency applications.', active: true, tags: ['fast'] },
+      { id: 'imagen-4.0-generate-001', name: 'Imagen 4', description: 'State-of-the-art image generation.', active: true },
+      { id: 'gemini-2.5-flash-image', name: 'Gemini 2.5 Flash Image', description: 'Generate and edit images with text.', active: true },
+      { id: 'gemini-2.5-flash-native-audio-preview-09-2025', name: 'Gemini Live', description: 'Real-time conversational audio.', active: true },
+      { id: 'gemini-2.5-flash-preview-tts', name: 'TTS', description: 'Generate natural-sounding speech from text.', active: true },
     ],
   },
   {

@@ -102,6 +102,7 @@ export const analyzeFile = async (
   file: File,
   modelId: string,
   withReasoning: boolean,
+  useThinkingMode: boolean = false,
 ): Promise<AnalysisResult> => {
     const { provider, model } = getProviderAndModel(modelId);
     const apiKey = getApiKey(provider.id);
@@ -113,7 +114,7 @@ export const analyzeFile = async (
         switch (provider.id) {
             case 'google': {
                 const { prompt, schema } = createGooglePromptAndSchema(file, withReasoning);
-                analysis = await analyzeWithGoogle(file, model.id, prompt, schema);
+                analysis = await analyzeWithGoogle(file, model.id, prompt, schema, useThinkingMode);
                 break;
             }
             case 'openai': {
@@ -151,9 +152,64 @@ export const analyzeFile = async (
     };
 };
 
+export const generateReport = async (topic: string, keyPoints: string, audience: string): Promise<string> => {
+    const prompt = `Generate a well-structured report on the following topic: "${topic}".
+    The target audience is: ${audience}.
+    Incorporate these key points:
+    ${keyPoints}
+
+    The report should have a title, an introduction, several sections with headings, and a conclusion. Format the output in clean markdown.`;
+
+    const response = await googleAI.models.generateContent({
+        model: 'gemini-2.5-pro',
+        contents: prompt
+    });
+    return response.text;
+};
+
+export const generateVegaSpec = async (csvData: string, prompt: string): Promise<string> => {
+    const systemInstruction = `You are a data visualization expert. Your task is to generate a valid Vega-Lite JSON specification based on the user's request and the provided CSV data. Only output the JSON specification, with no extra text or markdown. The CSV data has the following headers and first few rows:\n\n${csvData.split('\n').slice(0, 4).join('\n')}`;
+
+    const response = await googleAI.models.generateContent({
+        model: 'gemini-2.5-pro',
+        contents: prompt,
+        config: {
+            systemInstruction,
+            responseMimeType: 'application/json'
+        }
+    });
+
+    return response.text;
+};
+
+
+export const cleanCsvData = async (csvData: string, instructions: string): Promise<string> => {
+    const prompt = `Here is a raw CSV file:\n\n\`\`\`csv\n${csvData}\n\`\`\`\n\nPlease clean this data based on the following instructions: "${instructions}".\n\nYour response MUST be a single JSON object with two keys: "summary_of_changes" (a markdown string detailing the changes you made) and "cleaned_csv" (a string containing only the cleaned data in CSV format).`;
+    
+    const responseSchema = {
+        type: Type.OBJECT,
+        properties: {
+            summary_of_changes: { type: Type.STRING, description: "A markdown-formatted summary of the data cleaning steps taken." },
+            cleaned_csv: { type: Type.STRING, description: "The resulting data in raw CSV format, including the header." }
+        },
+        required: ['summary_of_changes', 'cleaned_csv']
+    };
+    
+    const response = await googleAI.models.generateContent({
+        model: 'gemini-2.5-pro',
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema,
+        },
+    });
+    return response.text;
+};
+
+
 // --- Provider-Specific Analysis Functions ---
 
-const analyzeWithGoogle = async (file: File, modelId: string, prompt: string, schema: any): Promise<string> => {
+const analyzeWithGoogle = async (file: File, modelId: string, prompt: string, schema: any, useThinkingMode: boolean): Promise<string> => {
     // This unified approach sends the file as a base64 string for all types (image, text, pdf).
     // This prevents embedding large text content directly into the prompt, fixing token limit errors.
     const base64Data = await fileToBase64(file);
@@ -170,6 +226,7 @@ const analyzeWithGoogle = async (file: File, modelId: string, prompt: string, sc
       config: {
         responseMimeType: "application/json",
         responseSchema: schema,
+        ...(useThinkingMode && { thinkingConfig: { thinkingBudget: 32768 }})
       }
     });
     return response.text;
