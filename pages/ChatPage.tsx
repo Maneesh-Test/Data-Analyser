@@ -347,12 +347,14 @@ export const ChatPage: React.FC = () => {
             return { role: msg.role, parts };
         });
 
-        const chat: Chat = aiRef.current.chats.create({ 
-            model: 'gemini-2.5-flash', 
+        const chat: Chat = aiRef.current.chats.create({
+            model: 'gemini-2.0-flash-exp',
             history: geminiHistory,
-            config: { 
+            config: {
                 systemInstruction: CHATBOT_SYSTEM_INSTRUCTION,
-                tools: [{googleSearch: {}}, {googleMaps: {}}]
+                tools: [
+                    { googleSearch: {} }
+                ]
             }
         });
         
