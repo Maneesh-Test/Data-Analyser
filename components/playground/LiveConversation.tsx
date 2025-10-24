@@ -271,7 +271,10 @@ export const LiveConversation: React.FC = () => {
                 responseModalities: [Modality.AUDIO],
                 inputAudioTranscription: {},
                 outputAudioTranscription: {},
-                tools: [{ functionDeclarations: [postToLinkedInFunction] }],
+                tools: [
+                    { googleSearch: {} },
+                    { functionDeclarations: [postToLinkedInFunction] }
+                ],
             },
         });
         sessionPromiseRef.current = sessionPromise;
