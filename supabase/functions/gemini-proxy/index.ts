@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,31 +7,67 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-// Simple in-memory rate limiting (resets when function restarts)
-const userUsage = new Map<string, { count: number; resetDate: string }>();
-
 const DAILY_LIMIT = 200; // Generous limit for family use
 
-const resetIfNeeded = (userId: string) => {
-  const today = new Date().toISOString().split('T')[0];
-  const usage = userUsage.get(userId);
-
-  if (!usage || usage.resetDate !== today) {
-    userUsage.set(userId, { count: 0, resetDate: today });
-  }
+// Initialize Supabase client with service role key
+const getSupabaseClient = () => {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  return createClient(supabaseUrl, supabaseServiceKey);
 };
 
-const checkAndIncrementUsage = (userId: string): { allowed: boolean; count: number; limit: number } => {
-  resetIfNeeded(userId);
-  const usage = userUsage.get(userId)!;
+const checkAndIncrementUsage = async (userId: string): Promise<{ allowed: boolean; count: number; limit: number }> => {
+  const supabase = getSupabaseClient();
+  const today = new Date().toISOString().split('T')[0];
 
-  if (usage.count >= DAILY_LIMIT) {
-    return { allowed: false, count: usage.count, limit: DAILY_LIMIT };
+  // Try to get or create today's usage record
+  const { data: usage, error: fetchError } = await supabase
+    .from('api_usage')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('reset_date', today)
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error('Error fetching usage:', fetchError);
+    throw new Error('Failed to check rate limit');
   }
 
-  usage.count++;
-  userUsage.set(userId, usage);
-  return { allowed: true, count: usage.count, limit: DAILY_LIMIT };
+  // If no record exists, create one
+  if (!usage) {
+    const { error: insertError } = await supabase
+      .from('api_usage')
+      .insert({
+        user_id: userId,
+        request_count: 1,
+        reset_date: today,
+      });
+
+    if (insertError) {
+      console.error('Error creating usage record:', insertError);
+      throw new Error('Failed to track usage');
+    }
+
+    return { allowed: true, count: 1, limit: DAILY_LIMIT };
+  }
+
+  // Check if limit exceeded
+  if (usage.request_count >= DAILY_LIMIT) {
+    return { allowed: false, count: usage.request_count, limit: DAILY_LIMIT };
+  }
+
+  // Increment the counter
+  const { error: updateError } = await supabase
+    .from('api_usage')
+    .update({ request_count: usage.request_count + 1 })
+    .eq('id', usage.id);
+
+  if (updateError) {
+    console.error('Error updating usage:', updateError);
+    throw new Error('Failed to update usage');
+  }
+
+  return { allowed: true, count: usage.request_count + 1, limit: DAILY_LIMIT };
 };
 
 Deno.serve(async (req: Request) => {
@@ -49,13 +86,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Extract user ID from JWT (simple extraction, assumes valid JWT)
+    // Extract user ID from JWT
     const token = authHeader.replace('Bearer ', '');
     const payload = JSON.parse(atob(token.split('.')[1]));
     const userId = payload.sub || payload.user_id || 'anonymous';
 
-    // Check rate limit
-    const usageCheck = checkAndIncrementUsage(userId);
+    // Check rate limit using database
+    const usageCheck = await checkAndIncrementUsage(userId);
     if (!usageCheck.allowed) {
       return new Response(
         JSON.stringify({
