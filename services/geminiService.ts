@@ -3,6 +3,19 @@ import { fileToBase64 } from "../utils/fileUtils";
 
 let ai: GoogleGenAI;
 
+const trackUsage = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const stored = localStorage.getItem('apiUsageDate');
+
+    if (stored !== today) {
+        localStorage.setItem('apiUsageCount', '1');
+        localStorage.setItem('apiUsageDate', today);
+    } else {
+        const count = parseInt(localStorage.getItem('apiUsageCount') || '0');
+        localStorage.setItem('apiUsageCount', (count + 1).toString());
+    }
+};
+
 const getAI = () => {
     if (!ai) {
         const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
@@ -17,6 +30,7 @@ const getAI = () => {
 // ---- Audio / Speech ----
 
 export const transcribeAudio = async (audioFile: File): Promise<string> => {
+    trackUsage();
     const ai = getAI();
     const audioBytes = await fileToBase64(audioFile);
     const audioPart = {
@@ -33,6 +47,7 @@ export const transcribeAudio = async (audioFile: File): Promise<string> => {
 };
 
 export const generateSpeech = async (text: string): Promise<string> => {
+    trackUsage();
     const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
@@ -57,6 +72,7 @@ export const generateSpeech = async (text: string): Promise<string> => {
 // ---- Image ----
 
 export const generateImage = async (prompt: string, aspectRatio: string): Promise<string> => {
+    trackUsage();
     const ai = getAI();
     const response = await ai.models.generateImages({
         model: 'imagen-4.0-generate-001',
@@ -76,6 +92,7 @@ export const generateImage = async (prompt: string, aspectRatio: string): Promis
 };
 
 export const editImage = async (imageFile: File, prompt: string): Promise<string> => {
+    trackUsage();
     const ai = getAI();
     const imageBytes = await fileToBase64(imageFile);
     const response = await ai.models.generateContent({
@@ -105,6 +122,7 @@ export const editImage = async (imageFile: File, prompt: string): Promise<string
 // ---- Video ----
 
 export const generateVideo = async (prompt: string, imageFile: File | null, aspectRatio: '16:9' | '9:16'): Promise<string> => {
+    trackUsage();
     const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
         throw new Error('Gemini API key is not configured. Please check your environment variables.');
@@ -152,6 +170,7 @@ export const generateVideo = async (prompt: string, imageFile: File | null, aspe
 };
 
 export const analyzeVideo = async (videoFile: File): Promise<string> => {
+    trackUsage();
     const ai = getAI();
     const videoBytes = await fileToBase64(videoFile);
     const videoPart = {

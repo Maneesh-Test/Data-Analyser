@@ -5,6 +5,19 @@ import { LLM_PROVIDERS } from '../lib/models';
 
 let googleAI: GoogleGenAI;
 
+const trackUsage = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const stored = localStorage.getItem('apiUsageDate');
+
+    if (stored !== today) {
+        localStorage.setItem('apiUsageCount', '1');
+        localStorage.setItem('apiUsageDate', today);
+    } else {
+        const count = parseInt(localStorage.getItem('apiUsageCount') || '0');
+        localStorage.setItem('apiUsageCount', (count + 1).toString());
+    }
+};
+
 const getGoogleAI = () => {
     if (!googleAI) {
         const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
@@ -119,6 +132,7 @@ export const analyzeFile = async (
   withReasoning: boolean,
   useThinkingMode: boolean = false,
 ): Promise<AnalysisResult> => {
+    trackUsage();
     const { provider, model } = getProviderAndModel(modelId);
     const apiKey = getApiKey(provider.id);
     
@@ -168,6 +182,7 @@ export const analyzeFile = async (
 };
 
 export const generateReport = async (topic: string, keyPoints: string, audience: string): Promise<string> => {
+    trackUsage();
     const prompt = `Generate a well-structured report on the following topic: "${topic}".
     The target audience is: ${audience}.
     Incorporate these key points:
@@ -183,6 +198,7 @@ export const generateReport = async (topic: string, keyPoints: string, audience:
 };
 
 export const generateVegaSpec = async (csvData: string, prompt: string): Promise<string> => {
+    trackUsage();
     const systemInstruction = `You are a data visualization expert. Your task is to generate a valid Vega-Lite JSON specification based on the user's request and the provided CSV data. Only output the JSON specification, with no extra text or markdown. The CSV data has the following headers and first few rows:\n\n${csvData.split('\n').slice(0, 4).join('\n')}`;
 
     const response = await getGoogleAI().models.generateContent({
@@ -199,6 +215,7 @@ export const generateVegaSpec = async (csvData: string, prompt: string): Promise
 
 
 export const cleanCsvData = async (csvData: string, instructions: string): Promise<string> => {
+    trackUsage();
     const prompt = `Here is a raw CSV file:\n\n\`\`\`csv\n${csvData}\n\`\`\`\n\nPlease clean this data based on the following instructions: "${instructions}".\n\nYour response MUST be a single JSON object with two keys: "summary_of_changes" (a markdown string detailing the changes you made) and "cleaned_csv" (a string containing only the cleaned data in CSV format).`;
     
     const responseSchema = {

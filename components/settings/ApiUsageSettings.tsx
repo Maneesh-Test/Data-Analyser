@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '../Button';
 import { ChevronDownIcon, BarChart2Icon } from '../Icons';
+import ApiUsageInfo from './ApiUsageInfo';
 
 // Mock Data
 const kpiData = [
@@ -31,6 +32,11 @@ export const ApiUsageSettings: React.FC = () => {
                     <span>Last 30 Days</span>
                     <ChevronDownIcon className="w-4 h-4" />
                 </Button>
+            </div>
+
+            {/* Daily Usage Info */}
+            <div className="mb-10">
+                <ApiUsageInfo />
             </div>
 
             {/* KPIs */}
