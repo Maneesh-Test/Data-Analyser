@@ -196,9 +196,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 items-start">
         <div className="w-full">
-            <label htmlFor="model-selector" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="model-selector" className="block text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 AI Model
             </label>
             <ModelSelector
@@ -208,14 +208,14 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                 disabled={isLoading}
             />
         </div>
-        <div className="flex items-center space-x-3 md:mt-7">
+        <div className="flex items-center space-x-2 sm:space-x-3 md:mt-7">
             <Switch
                 id="with-reasoning"
                 checked={withReasoning}
                 onChange={(e) => onWithReasoningChange(e.target.checked)}
                 disabled={isLoading}
             />
-            <label htmlFor="with-reasoning" className="text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
+            <label htmlFor="with-reasoning" className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 cursor-pointer leading-tight">
                 {isProModel ? 'Enable Thinking Mode' : 'Include step-by-step reasoning'}
             </label>
         </div>
@@ -230,7 +230,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         disabled={isLoading || !selectedModel}
         variant="teal-gradient"
         size="lg"
-        className="w-full gap-2.5"
+        className="w-full gap-2 sm:gap-2.5 text-sm sm:text-base"
       >
         {isLoading ? 'Analyzing...' : (
             <>

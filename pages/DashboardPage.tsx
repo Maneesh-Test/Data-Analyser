@@ -185,15 +185,15 @@ export const DashboardPage: React.FC<{ navigateTo: (page: Page) => void }> = ({ 
   };
   
   return (
-    <div className="w-full h-full">
-      <div className="container mx-auto p-4 md:p-8">
+    <div className="w-full h-full overflow-y-auto">
+      <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 md:px-8 md:py-8">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center pt-8 mb-10">
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-800 dark:text-white">File Analysis Dashboard</h2>
-            <p className="text-slate-600 dark:text-slate-400 mt-2 max-w-2xl mx-auto">Welcome, {user?.email || 'Guest'}. Upload your files to get instant, AI-powered insights.</p>
+          <div className="text-center pt-4 sm:pt-8 mb-6 sm:mb-10">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-slate-800 dark:text-white px-2">File Analysis Dashboard</h2>
+            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mt-2 max-w-2xl mx-auto px-4">Welcome, {user?.email || 'Guest'}. Upload your files to get instant, AI-powered insights.</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
               <InfoBlock 
                 icon={<BarChartIcon className="w-6 h-6 text-teal-600" />}
                 title="Deep Analysis"
@@ -232,24 +232,24 @@ export const DashboardPage: React.FC<{ navigateTo: (page: Page) => void }> = ({ 
           />
           
           {uploadedFiles.length === 0 ? (
-              <div className="mt-8 text-center py-16 px-6 border-2 border-dashed border-slate-300/70 dark:border-slate-700/70 rounded-xl bg-white/5 dark:bg-slate-900/20">
+              <div className="mt-6 sm:mt-8 text-center py-12 sm:py-16 px-4 sm:px-6 border-2 border-dashed border-slate-300/70 dark:border-slate-700/70 rounded-xl bg-white/5 dark:bg-slate-900/20">
                   <div className="max-w-md mx-auto">
-                      <div className="flex justify-center items-center gap-4 mb-6">
-                          <PdfIcon className="w-12 h-12 text-red-400/70" />
-                          <FileTextIcon className="w-12 h-12 text-slate-400/70" />
-                          <ImageIcon className="w-12 h-12 text-sky-400/70" />
+                      <div className="flex justify-center items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+                          <PdfIcon className="w-8 h-8 sm:w-12 sm:h-12 text-red-400/70" />
+                          <FileTextIcon className="w-8 h-8 sm:w-12 sm:h-12 text-slate-400/70" />
+                          <ImageIcon className="w-8 h-8 sm:w-12 sm:h-12 text-sky-400/70" />
                       </div>
-                      <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100">Your analysis history will appear here</h3>
-                      <p className="mt-2 text-slate-500 dark:text-slate-400">
+                      <h3 className="text-lg sm:text-xl font-semibold text-slate-800 dark:text-slate-100 px-2">Your analysis history will appear here</h3>
+                      <p className="mt-2 text-sm sm:text-base text-slate-500 dark:text-slate-400 px-2">
                         Ready to unlock some insights? Upload a file to get started.
                       </p>
                   </div>
               </div>
           ) : (
-              <div className="mt-8 space-y-6">
+              <div className="mt-6 sm:mt-8 space-y-4 sm:space-y-6">
               {uploadedFiles.map(fileData => (
-                  <FileProgress 
-                  key={fileData.id} 
+                  <FileProgress
+                  key={fileData.id}
                   fileData={fileData}
                   onRemove={handleRemoveFile}
                   onReanalyze={handleReanalyze}

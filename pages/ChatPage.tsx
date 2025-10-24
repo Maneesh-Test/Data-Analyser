@@ -725,47 +725,51 @@ export const ChatPage: React.FC = () => {
                 <div ref={messagesEndRef} />
             </div>
 
-            <div className="flex-shrink-0 p-4 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/20 dark:bg-slate-900/20">
+            <div className="flex-shrink-0 p-3 sm:p-4 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/20 dark:bg-slate-900/20">
                 {error && <p className="text-center text-red-500 text-sm mb-2">{error}</p>}
-                
+
                 {attachedFile && (
                     <div className="mb-2 p-2 bg-slate-200 dark:bg-slate-700 rounded-lg flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 truncate">
-                            {attachedFile.type.startsWith('image/') ? <ImageIcon className="w-5 h-5 text-sky-500" /> : <FileTextIcon className="w-5 h-5 text-slate-500" />}
-                            <span className="truncate text-slate-700 dark:text-slate-300">{attachedFile.name}</span>
+                        <div className="flex items-center gap-2 truncate min-w-0">
+                            {attachedFile.type.startsWith('image/') ? <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5 text-sky-500 flex-shrink-0" /> : <FileTextIcon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500 flex-shrink-0" />}
+                            <span className="truncate text-slate-700 dark:text-slate-300 text-xs sm:text-sm">{attachedFile.name}</span>
                         </div>
-                        <button onClick={() => setAttachedFile(null)} className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-full"><XIcon className="w-4 h-4" /></button>
+                        <button onClick={() => setAttachedFile(null)} className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-full flex-shrink-0" aria-label="Remove file"><XIcon className="w-4 h-4" /></button>
                     </div>
                 )}
 
-                <form onSubmit={handleSendMessage} className="relative flex items-end gap-2">
-                    <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 h-11 w-11 flex-shrink-0 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" aria-label="Attach file">
-                        <PaperclipIcon className="w-5 h-5"/>
-                    </button>
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*,text/*,application/pdf" />
-                    
-                    <button type="button" onClick={handleVoiceRecording} className={`p-2 h-11 w-11 flex-shrink-0 flex items-center justify-center rounded-lg border transition-colors ${isRecording ? 'bg-red-500 text-white border-red-500 hover:bg-red-600' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`} aria-label={isRecording ? 'Stop recording' : 'Start recording'}>
-                        {isRecording ? <MicOffIcon className="w-5 h-5" /> : <MicIcon className="w-5 h-5" />}
-                    </button>
+                <form onSubmit={handleSendMessage} className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2">
+                    <div className="flex items-end gap-2 flex-1">
+                        <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 h-10 w-10 sm:h-11 sm:w-11 flex-shrink-0 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" aria-label="Attach file">
+                            <PaperclipIcon className="w-4 h-4 sm:w-5 sm:h-5"/>
+                        </button>
+                        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*,text/*,application/pdf" />
 
-                    <textarea
-                        ref={textareaRef}
-                        value={userInput}
-                        onChange={(e) => setUserInput(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSendMessage(e);
-                            }
-                        }}
-                        placeholder="Type or record a message..."
-                        className="flex-grow w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg pl-4 pr-12 py-2.5 resize-none text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                        rows={1}
-                        disabled={isLoading || isRecording}
-                    />
-                    <Button type="submit" disabled={isLoading || isRecording || (!userInput.trim() && !attachedFile)} className="absolute right-2 bottom-[5px] !p-2 h-9 w-9" aria-label="Send message">
-                        <SendHorizontalIcon className="w-5 h-5" />
-                    </Button>
+                        <button type="button" onClick={handleVoiceRecording} className={`p-2 h-10 w-10 sm:h-11 sm:w-11 flex-shrink-0 flex items-center justify-center rounded-lg border transition-colors ${isRecording ? 'bg-red-500 text-white border-red-500 hover:bg-red-600' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`} aria-label={isRecording ? 'Stop recording' : 'Start recording'}>
+                            {isRecording ? <MicOffIcon className="w-4 h-4 sm:w-5 sm:h-5" /> : <MicIcon className="w-4 h-4 sm:w-5 sm:h-5" />}
+                        </button>
+
+                        <div className="relative flex-1 min-w-0">
+                            <textarea
+                                ref={textareaRef}
+                                value={userInput}
+                                onChange={(e) => setUserInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleSendMessage(e);
+                                    }
+                                }}
+                                placeholder="Type or record a message..."
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg pl-3 pr-10 sm:pl-4 sm:pr-12 py-2.5 resize-none text-sm sm:text-base text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                rows={1}
+                                disabled={isLoading || isRecording}
+                            />
+                            <Button type="submit" disabled={isLoading || isRecording || (!userInput.trim() && !attachedFile)} className="absolute right-1.5 bottom-1.5 sm:right-2 sm:bottom-2 !p-1.5 sm:!p-2 h-7 w-7 sm:h-9 sm:w-9" aria-label="Send message">
+                                <SendHorizontalIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                            </Button>
+                        </div>
+                    </div>
                 </form>
             </div>
         </section>
