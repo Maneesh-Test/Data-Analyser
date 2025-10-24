@@ -26,9 +26,24 @@ export const VideoGeneration: React.FC = () => {
       addToast('Please enter a prompt or upload an image.', 'error');
       return;
     }
+    setIsLoading(true);
+    setGeneratedVideoUrl(null);
+    setLoadingMessage('Initializing video generation...');
 
-    addToast('Video generation requires Google Cloud billing with Veo API enabled. This feature is not available in the free tier.', 'error');
-    return;
+    const messageInterval = setInterval(() => {
+        setLoadingMessage(loadingMessages[Math.floor(Math.random() * loadingMessages.length)]);
+    }, 5000);
+
+    try {
+      const videoUrl = await generateVideo(prompt, imageFile, aspectRatio);
+      setGeneratedVideoUrl(videoUrl);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An unknown error occurred.';
+      addToast(`Video generation failed: ${message}`, 'error');
+    } finally {
+      setIsLoading(false);
+      clearInterval(messageInterval);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
