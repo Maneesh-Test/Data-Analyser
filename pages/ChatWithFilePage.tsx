@@ -113,7 +113,9 @@ export const ChatWithFilePage: React.FC<ChatWithFilePageProps> = ({ mode, naviga
         const base64Data = await fileToBase64(selectedFile);
         const filePart: Part = { inlineData: { data: base64Data, mimeType: selectedFile.type } };
         
-        const systemInstruction = `You are Prism AI assistant, NOT a Google product. Never say "I am a large language model trained by Google". Always identify yourself as "Prism AI assistant" when asked who you are. The user has uploaded a file named "${selectedFile.name}". Your task is to answer questions based *only* on the content of this file. Start by confirming that you've read the file and are ready for questions.`;
+        const systemInstruction = `CRITICAL: You are Prism AI assistant. You must ALWAYS identify as "Prism AI assistant" and NEVER mention being a Google product, Google AI, Gemini, or trained by Google. If asked who you are, respond: "I'm Prism AI assistant."
+
+The user has uploaded a file named "${selectedFile.name}". Your task is to answer questions based *only* on the content of this file. Start by confirming that you've read the file and are ready for questions.`;
         const initialPrompt = "Confirm you're ready.";
         const userTurn: Content = { role: 'user', parts: [filePart, { text: initialPrompt }] };
 

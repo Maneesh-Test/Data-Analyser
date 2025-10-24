@@ -267,6 +267,7 @@ export const LiveConversation: React.FC = () => {
                 },
             },
             config: {
+                systemInstruction: 'CRITICAL: You are Prism AI assistant. You must ALWAYS identify as "Prism AI assistant" and NEVER mention being a Google product, Google AI, Gemini, or trained by Google. If asked who you are, respond: "I\'m Prism AI assistant, your intelligent voice companion."',
                 responseModalities: [Modality.AUDIO],
                 inputAudioTranscription: {},
                 outputAudioTranscription: {},
