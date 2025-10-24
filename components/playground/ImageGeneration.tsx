@@ -16,17 +16,9 @@ export const ImageGeneration: React.FC = () => {
       addToast('Please enter a prompt.', 'error');
       return;
     }
-    setIsLoading(true);
-    setGeneratedImage(null);
-    try {
-      const imageB64 = await generateImage(prompt, aspectRatio);
-      setGeneratedImage(`data:image/jpeg;base64,${imageB64}`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'An unknown error occurred.';
-      addToast(`Image generation failed: ${message}`, 'error');
-    } finally {
-      setIsLoading(false);
-    }
+
+    addToast('Image generation requires Google Cloud billing with Imagen API enabled. This feature is not available in the free tier.', 'error');
+    return;
   };
 
   const handleDownload = () => {
