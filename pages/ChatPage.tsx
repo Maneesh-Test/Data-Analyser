@@ -183,6 +183,7 @@ export const ChatPage: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const hasLoadedRef = useRef(false);
 
   const handleNewChat = useCallback(() => {
     const newConversation: Conversation = {
@@ -210,7 +211,8 @@ export const ChatPage: React.FC = () => {
     aiRef.current = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
     const loadConversations = async () => {
-        if (user) {
+        if (user && !hasLoadedRef.current) {
+            hasLoadedRef.current = true;
             setIsLoading(true);
             const { data, error } = await supabase
                 .from('conversations')
@@ -231,12 +233,13 @@ export const ChatPage: React.FC = () => {
                 handleNewChat();
             }
             setIsLoading(false);
-        } else {
+        } else if (!user) {
              setConversations([]);
              setActiveConversationId(null);
+             hasLoadedRef.current = false;
         }
     };
-    
+
     loadConversations();
   }, [user, addToast, handleNewChat, activeConversationId]);
 
@@ -568,7 +571,6 @@ export const ChatPage: React.FC = () => {
   const handleDeleteAllConversations = async () => {
     if (!user) return;
 
-    setIsLoading(true);
     const { error } = await supabase
       .from('conversations')
       .delete()
@@ -576,14 +578,12 @@ export const ChatPage: React.FC = () => {
 
     if (error) {
       addToast('Failed to delete all conversations.', 'error');
-      setIsLoading(false);
     } else {
       setConversations([]);
       setActiveConversationId(null);
-      handleNewChat();
       addToast('All conversations deleted.', 'success');
       setShowDeleteAllModal(false);
-      setIsLoading(false);
+      handleNewChat();
     }
   };
 
