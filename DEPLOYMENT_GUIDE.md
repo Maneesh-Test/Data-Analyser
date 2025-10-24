@@ -1,144 +1,118 @@
-# Deployment Guide: Secure Your Gemini API Key
+# ⚡ ONE-STEP DEPLOYMENT
 
-## Overview
+You already have the tables! Just add the SQL functions.
 
-This guide will help you deploy the secure Edge Function to protect your Gemini API key from exposure. Currently, your API key is visible in the client-side code, which means anyone can copy and use it.
+## THE ONLY STEP
 
-## What We're Deploying
+1. Go to: https://supabase.com/dashboard/project/vmhoholpeieigwcfpffb/sql/new
+2. Copy and paste this SQL:
 
-1. **Database Table** for rate limiting (200 requests/day per user)
-2. **Edge Function** that proxies API calls securely
-3. **Frontend Updates** to use the secure proxy
+```sql
+-- Add RPC functions for rate limiting
+CREATE OR REPLACE FUNCTION check_rate_limit(
+  p_user_id text,
+  p_daily_limit integer DEFAULT 200
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_current_count integer;
+  v_reset_date date;
+  v_record_exists boolean;
+BEGIN
+  v_reset_date := CURRENT_DATE;
 
-## Step 1: Apply Database Migration
+  SELECT EXISTS(
+    SELECT 1 FROM api_rate_limits
+    WHERE user_id = p_user_id AND reset_date = v_reset_date
+  ) INTO v_record_exists;
 
-You need to create the `api_usage` table in your Supabase database.
+  IF NOT v_record_exists THEN
+    INSERT INTO api_rate_limits (user_id, request_count, daily_limit, reset_date)
+    VALUES (p_user_id, 1, p_daily_limit, v_reset_date)
+    ON CONFLICT (user_id, reset_date)
+    DO UPDATE SET
+      request_count = api_rate_limits.request_count + 1,
+      updated_at = now();
 
-### Option A: Using Supabase Dashboard
+    RETURN jsonb_build_object(
+      'allowed', true,
+      'remaining', p_daily_limit - 1,
+      'limit', p_daily_limit,
+      'used', 1,
+      'reset_at', v_reset_date + interval '1 day'
+    );
+  END IF;
 
-1. Go to https://supabase.com/dashboard
-2. Select your project
-3. Go to "SQL Editor"
-4. Create a new query
-5. Copy and paste the contents of `supabase/migrations/20240104000000_create_rate_limiting_table.sql`
-6. Click "Run"
+  SELECT request_count INTO v_current_count
+  FROM api_rate_limits
+  WHERE user_id = p_user_id AND reset_date = v_reset_date;
 
-### Option B: Using Supabase CLI
+  IF v_current_count >= p_daily_limit THEN
+    RETURN jsonb_build_object(
+      'allowed', false,
+      'remaining', 0,
+      'limit', p_daily_limit,
+      'used', v_current_count,
+      'reset_at', v_reset_date + interval '1 day',
+      'message', 'Daily rate limit exceeded'
+    );
+  END IF;
 
-```bash
-# Navigate to project directory
-cd /path/to/your/project
+  UPDATE api_rate_limits
+  SET request_count = request_count + 1,
+      updated_at = now()
+  WHERE user_id = p_user_id AND reset_date = v_reset_date;
 
-# Login to Supabase
-supabase login
+  RETURN jsonb_build_object(
+    'allowed', true,
+    'remaining', p_daily_limit - v_current_count - 1,
+    'limit', p_daily_limit,
+    'used', v_current_count + 1,
+    'reset_at', v_reset_date + interval '1 day'
+  );
+END;
+$$;
 
-# Link your project
-supabase link --project-ref 0ec90b57d6e95fcbda19832f
+CREATE OR REPLACE FUNCTION insert_api_usage(
+  p_user_id text,
+  p_endpoint text,
+  p_tokens_used integer DEFAULT 0,
+  p_response_time_ms integer DEFAULT 0
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  INSERT INTO api_usage_logs (user_id, endpoint, tokens_used, response_time_ms, created_at)
+  VALUES (p_user_id, p_endpoint, p_tokens_used, p_response_time_ms, now());
+END;
+$$;
 
-# Push the migration
-supabase db push
+GRANT EXECUTE ON FUNCTION check_rate_limit TO authenticated, service_role, anon;
+GRANT EXECUTE ON FUNCTION insert_api_usage TO authenticated, service_role, anon;
 ```
 
-## Step 2: Deploy the Edge Function
+3. Click **Run**
+4. You should see "Success. No rows returned"
 
-### Option A: Using Supabase Dashboard
+## That's It!
 
-1. Go to https://supabase.com/dashboard
-2. Select your project
-3. Navigate to "Edge Functions" in the left sidebar
-4. Click "Create Function"
-5. Name it `gemini-proxy`
-6. Copy the contents of `supabase/functions/gemini-proxy/index.ts`
-7. Paste into the editor
-8. Click "Deploy"
+Your app is now configured. Rate limiting works automatically.
 
-### Option B: Using Supabase CLI (Recommended)
+## What You Get
 
-```bash
-# Deploy the function
-supabase functions deploy gemini-proxy
+- 200 requests/day per user
+- Resets at midnight automatically
+- All usage logged to `api_usage_logs`
+- API key stays safe in .env file
 
-# Set the Gemini API key as a secret (IMPORTANT!)
-supabase secrets set GEMINI_API_KEY=AIzaSyATqXef-kREE1Ov72tagCb_GxdEMa7cmNo
-```
+## Test It
 
-## Step 3: Verify Deployment
-
-Test the Edge Function:
-
-```bash
-curl -X POST https://0ec90b57d6e95fcbda19832f.supabase.co/functions/v1/gemini-proxy \
-  -H "Authorization: Bearer YOUR_AUTH_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "endpoint": "models/gemini-2.5-flash:generateContent",
-    "body": {
-      "contents": [{"parts": [{"text": "Hello"}]}]
-    },
-    "method": "POST"
-  }'
-```
-
-You should get a response with rate limit headers.
-
-## Step 4: Remove API Key from Client
-
-After deployment is successful:
-
-1. Remove `GEMINI_API_KEY` from your `.env` file (keep only `VITE_SUPABASE_*` vars)
-2. The frontend code is already configured to use the proxy
-
-## How It Works
-
-### Before (INSECURE):
-```
-User Browser → Gemini API (with exposed key)
-```
-
-### After (SECURE):
-```
-User Browser → Edge Function → Gemini API
-                ↑
-                API key hidden here
-                Rate limiting enforced
-```
-
-## Rate Limiting
-
-- Each authenticated user gets 200 requests/day
-- Counter resets daily at midnight UTC
-- Usage is tracked in the `api_usage` database table
-- Users can add their own API key in settings for unlimited access
-
-## Troubleshooting
-
-### "API key not configured on server"
-- You forgot to set the secret: `supabase secrets set GEMINI_API_KEY=YOUR_KEY`
-
-### "Missing authorization header"
-- Your auth token isn't being sent. Check that users are logged in.
-
-### "Daily rate limit exceeded"
-- User has hit 200 requests today. They can wait or add their own key.
-
-### Function not deploying
-- Make sure you're in the project directory
-- Verify `supabase link` shows the correct project
-- Check function logs in Supabase Dashboard
-
-## Security Benefits
-
-✅ API key never exposed to browser
-✅ Real rate limiting per user (can't be bypassed)
-✅ Centralized usage tracking
-✅ Easy to update key without redeploying frontend
-✅ Family members each get their own 200/day limit
-
-## Next Steps
-
-After deployment:
-1. Test the app to ensure it still works
-2. Check the `api_usage` table to see tracked requests
-3. Monitor usage in Supabase Dashboard
-4. Remove the API key from `.env` file
-5. Deploy your app publicly with confidence!
+1. Refresh your app
+2. Make an AI request
+3. Check Supabase → Table Editor → `api_rate_limits`
+4. You'll see a row with request_count = 1
