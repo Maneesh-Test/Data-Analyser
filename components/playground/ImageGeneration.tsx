@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '../Button';
-import { generateImage } from '../../services/geminiService';
+import { generateImageWithReplicate } from '../../services/replicateService';
 import { LoaderIcon, DownloadIcon } from '../Icons';
 import { useToast } from '../../contexts/ToastContext';
 
@@ -19,8 +19,9 @@ export const ImageGeneration: React.FC = () => {
     setIsLoading(true);
     setGeneratedImage(null);
     try {
-      const imageB64 = await generateImage(prompt, aspectRatio);
+      const imageB64 = await generateImageWithReplicate(prompt, aspectRatio);
       setGeneratedImage(`data:image/jpeg;base64,${imageB64}`);
+      addToast('Image generated successfully!', 'success');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'An unknown error occurred.';
       addToast(`Image generation failed: ${message}`, 'error');
