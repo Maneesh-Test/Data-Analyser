@@ -173,15 +173,32 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
                     <span className="flex-shrink mx-4 text-xs text-slate-400 dark:text-slate-500 uppercase">Or continue with</span>
                     <div className="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
                   </div>
-                  <div className="space-y-4">
-                    <Button onClick={() => handleProviderLogin('google')} type="button" variant="secondary" className="w-full gap-3">
+                  <div className="space-y-3">
+                    <Button
+                      onClick={() => handleProviderLogin('google')}
+                      type="button"
+                      variant="secondary"
+                      className="w-full gap-3 opacity-50 cursor-not-allowed"
+                      disabled
+                      title="Coming soon"
+                    >
                       <GoogleIcon className="w-5 h-5" />
                       Sign in with Google
                     </Button>
-                    <Button onClick={() => handleProviderLogin('github')} type="button" variant="secondary" className="w-full gap-3">
+                    <Button
+                      onClick={() => handleProviderLogin('github')}
+                      type="button"
+                      variant="secondary"
+                      className="w-full gap-3 opacity-50 cursor-not-allowed"
+                      disabled
+                      title="Coming soon"
+                    >
                       <GitHubIcon className="w-5 h-5" />
                       Sign in with GitHub
                     </Button>
+                    <p className="text-xs text-center text-slate-400 dark:text-slate-500 italic">
+                      Social login coming soon
+                    </p>
                   </div>
                 </>
               )}
