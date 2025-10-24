@@ -1,20 +1,16 @@
 import React, { useState } from 'react';
-import { ChevronDownIcon, ImageIcon, MicIcon, Volume2Icon, Wand2Icon, VideoIcon } from '../components/Icons';
+import { ChevronDownIcon, ImageIcon, MicIcon, Volume2Icon, Wand2Icon } from '../components/Icons';
 import { ImageGeneration } from '../components/playground/ImageGeneration';
 import { ImageEditing } from '../components/playground/ImageEditing';
 import { LiveConversation } from '../components/playground/LiveConversation';
 import { AudioTranscription } from '../components/playground/AudioTranscription';
 import { TextToSpeech } from '../components/playground/TextToSpeech';
-import { VideoGeneration } from '../components/playground/VideoGeneration';
-import { VideoAnalysis } from '../components/playground/VideoAnalysis';
 
-type PlaygroundTool = 'image-generation' | 'image-editing' | 'live-conversation' | 'audio-transcription' | 'text-to-speech' | 'video-generation' | 'video-analysis';
+type PlaygroundTool = 'image-generation' | 'image-editing' | 'live-conversation' | 'audio-transcription' | 'text-to-speech';
 
 const tools: { id: PlaygroundTool; name: string; description: string, icon: React.ReactNode }[] = [
     { id: 'image-generation', name: 'Image Generation', description: 'Create stunning images from text prompts.', icon: <ImageIcon className="w-5 h-5"/> },
     { id: 'image-editing', name: 'Image Editing', description: 'Edit existing images with text instructions.', icon: <Wand2Icon className="w-5 h-5" /> },
-    { id: 'video-generation', name: 'Video Generation', description: 'Generate short videos from text or images.', icon: <VideoIcon className="w-5 h-5" /> },
-    { id: 'video-analysis', name: 'Video Analysis', description: 'Get a description of what is in a video.', icon: <VideoIcon className="w-5 h-5" /> },
     { id: 'live-conversation', name: 'Live Conversation', description: 'Have a real-time voice chat with an AI.', icon: <MicIcon className="w-5 h-5" /> },
     { id: 'audio-transcription', name: 'Audio Transcription', description: 'Transcribe spoken words from an audio file.', icon: <MicIcon className="w-5 h-5" /> },
     { id: 'text-to-speech', name: 'Text to Speech', description: 'Convert text into natural-sounding speech.', icon: <Volume2Icon className="w-5 h-5" /> },
@@ -27,8 +23,6 @@ export const ApiPlaygroundPage: React.FC = () => {
         switch (activeTool) {
             case 'image-generation': return <ImageGeneration />;
             case 'image-editing': return <ImageEditing />;
-            case 'video-generation': return <VideoGeneration />;
-            case 'video-analysis': return <VideoAnalysis />;
             case 'live-conversation': return <LiveConversation />;
             case 'audio-transcription': return <AudioTranscription />;
             case 'text-to-speech': return <TextToSpeech />;
