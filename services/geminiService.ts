@@ -5,7 +5,11 @@ let ai: GoogleGenAI;
 
 const getAI = () => {
     if (!ai) {
-        ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            throw new Error('Gemini API key is not configured. Please check your environment variables.');
+        }
+        ai = new GoogleGenAI({ apiKey });
     }
     return ai;
 }
@@ -101,7 +105,11 @@ export const editImage = async (imageFile: File, prompt: string): Promise<string
 // ---- Video ----
 
 export const generateVideo = async (prompt: string, imageFile: File | null, aspectRatio: '16:9' | '9:16'): Promise<string> => {
-    const videoAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        throw new Error('Gemini API key is not configured. Please check your environment variables.');
+    }
+    const videoAI = new GoogleGenAI({ apiKey });
     
     let imagePayload: { imageBytes: string; mimeType: string; } | undefined = undefined;
     if (imageFile) {
@@ -132,8 +140,8 @@ export const generateVideo = async (prompt: string, imageFile: File | null, aspe
     if (!downloadLink) {
         throw new Error("Video generation failed or did not return a download link.");
     }
-    
-    const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+
+    const response = await fetch(`${downloadLink}&key=${apiKey}`);
     if (!response.ok) {
         throw new Error(`Failed to download video: ${response.statusText}`);
     }

@@ -85,11 +85,16 @@ export const LiveConversation: React.FC = () => {
 
   useEffect(() => {
     try {
-      aiRef.current = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        addToast('Gemini API key is not configured. Please check your environment variables.', 'error');
+        return;
+      }
+      aiRef.current = new GoogleGenAI({ apiKey });
     } catch(e) {
       addToast(e instanceof Error ? e.message : 'Error initializing AI', 'error');
     }
-    
+
     return () => { stopConversation(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addToast]);

@@ -3,7 +3,18 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { fileToBase64 } from '../utils/fileUtils';
 import { LLM_PROVIDERS } from '../lib/models';
 
-const googleAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
+let googleAI: GoogleGenAI;
+
+const getGoogleAI = () => {
+    if (!googleAI) {
+        const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            throw new Error('Gemini API key is not configured. Please check your environment variables.');
+        }
+        googleAI = new GoogleGenAI({ apiKey });
+    }
+    return googleAI;
+};
 
 interface AnalysisResult {
   analysis: string;
@@ -24,7 +35,11 @@ const getProviderAndModel = (modelId: string) => {
 const getApiKey = (providerId: string): string => {
     // For Google, the key is handled by the environment.
     if (providerId === 'google') {
-        return process.env.API_KEY;
+        const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            throw new Error('Gemini API key is not configured. Please check your environment variables.');
+        }
+        return apiKey;
     }
 
     // For other providers, get the user-provided key from local storage.
@@ -160,7 +175,7 @@ export const generateReport = async (topic: string, keyPoints: string, audience:
 
     The report should have a title, an introduction, several sections with headings, and a conclusion. Format the output in clean markdown.`;
 
-    const response = await googleAI.models.generateContent({
+    const response = await getGoogleAI().models.generateContent({
         model: 'gemini-2.5-pro',
         contents: prompt
     });
@@ -170,7 +185,7 @@ export const generateReport = async (topic: string, keyPoints: string, audience:
 export const generateVegaSpec = async (csvData: string, prompt: string): Promise<string> => {
     const systemInstruction = `You are a data visualization expert. Your task is to generate a valid Vega-Lite JSON specification based on the user's request and the provided CSV data. Only output the JSON specification, with no extra text or markdown. The CSV data has the following headers and first few rows:\n\n${csvData.split('\n').slice(0, 4).join('\n')}`;
 
-    const response = await googleAI.models.generateContent({
+    const response = await getGoogleAI().models.generateContent({
         model: 'gemini-2.5-pro',
         contents: prompt,
         config: {
@@ -195,7 +210,7 @@ export const cleanCsvData = async (csvData: string, instructions: string): Promi
         required: ['summary_of_changes', 'cleaned_csv']
     };
     
-    const response = await googleAI.models.generateContent({
+    const response = await getGoogleAI().models.generateContent({
         model: 'gemini-2.5-pro',
         contents: prompt,
         config: {
@@ -219,8 +234,8 @@ const analyzeWithGoogle = async (file: File, modelId: string, prompt: string, sc
             { text: prompt }
         ]
     };
-    
-    const response = await googleAI.models.generateContent({ 
+
+    const response = await getGoogleAI().models.generateContent({ 
       model: modelId, 
       contents,
       config: {
