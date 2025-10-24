@@ -198,7 +198,7 @@ export const LiveConversation: React.FC = () => {
                         if (audioChunkCount % 50 === 0) {
                             console.log(`[LiveConversation] Sent ${audioChunkCount} audio chunks`);
                         }
-                        sessionPromiseRef.current?.then((session) => session.sendRealtimeInput([{ media: blob }]));
+                        sessionPromiseRef.current?.then((session) => session.sendRealtimeInput({ audio: blob }));
                     };
                     source.connect(scriptProcessor);
                     scriptProcessor.connect(inputCtx.destination);
