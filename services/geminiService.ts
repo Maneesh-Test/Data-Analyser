@@ -1,5 +1,6 @@
 import { GoogleGenAI, Modality, Type, GenerateContentResponse } from "@google/genai";
 import { fileToBase64 } from "../utils/fileUtils";
+import { withRetry } from "../utils/retryUtils";
 
 let ai: GoogleGenAI;
 
@@ -39,33 +40,39 @@ export const transcribeAudio = async (audioFile: File): Promise<string> => {
             mimeType: audioFile.type,
         },
     };
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: { parts: [audioPart, {text: "Transcribe the following audio. Provide only the transcribed text, without any additional formatting, timestamps, or commentary."}] }
+
+    return withRetry(async () => {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [audioPart, {text: "Transcribe the following audio. Provide only the transcribed text, without any additional formatting, timestamps, or commentary."}] }
+        });
+        return response.text;
     });
-    return response.text;
 };
 
 export const generateSpeech = async (text: string): Promise<string> => {
     trackUsage();
     const ai = getAI();
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text }] }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Kore' },
+
+    return withRetry(async () => {
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash-preview-tts",
+          contents: [{ parts: [{ text }] }],
+          config: {
+            responseModalities: [Modality.AUDIO],
+            speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName: 'Kore' },
+                },
             },
-        },
-      },
+          },
+        });
+        const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+        if (!base64Audio) {
+            throw new Error("API did not return audio data.");
+        }
+        return base64Audio;
     });
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!base64Audio) {
-        throw new Error("API did not return audio data.");
-    }
-    return base64Audio;
 };
 
 
@@ -74,49 +81,55 @@ export const generateSpeech = async (text: string): Promise<string> => {
 export const generateImage = async (prompt: string, aspectRatio: string): Promise<string> => {
     trackUsage();
     const ai = getAI();
-    const response = await ai.models.generateImages({
-        model: 'imagen-4.0-generate-001',
-        prompt: prompt,
-        config: {
-          numberOfImages: 1,
-          aspectRatio: aspectRatio as "1:1" | "3:4" | "4:3" | "9:16" | "16:9",
-        },
-    });
 
-    if (response.generatedImages && response.generatedImages.length > 0) {
-        const base64ImageBytes: string = response.generatedImages[0].image.imageBytes;
-        return base64ImageBytes;
-    } else {
-        throw new Error("No image was generated. The prompt may have been blocked due to safety policies.");
-    }
+    return withRetry(async () => {
+        const response = await ai.models.generateImages({
+            model: 'imagen-4.0-generate-001',
+            prompt: prompt,
+            config: {
+              numberOfImages: 1,
+              aspectRatio: aspectRatio as "1:1" | "3:4" | "4:3" | "9:16" | "16:9",
+            },
+        });
+
+        if (response.generatedImages && response.generatedImages.length > 0) {
+            const base64ImageBytes: string = response.generatedImages[0].image.imageBytes;
+            return base64ImageBytes;
+        } else {
+            throw new Error("No image was generated. The prompt may have been blocked due to safety policies.");
+        }
+    });
 };
 
 export const editImage = async (imageFile: File, prompt: string): Promise<string> => {
     trackUsage();
     const ai = getAI();
     const imageBytes = await fileToBase64(imageFile);
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: {
-            parts: [
-                {
-                    inlineData: { data: imageBytes, mimeType: imageFile.type },
-                },
-                { text: prompt },
-            ],
-        },
-        config: {
-            responseModalities: [Modality.IMAGE],
-        },
+
+    return withRetry(async () => {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: {
+                parts: [
+                    {
+                        inlineData: { data: imageBytes, mimeType: imageFile.type },
+                    },
+                    { text: prompt },
+                ],
+            },
+            config: {
+                responseModalities: [Modality.IMAGE],
+            },
+        });
+
+        const imagePart = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+
+        if (imagePart?.inlineData?.data) {
+            return imagePart.inlineData.data;
+        }
+
+        throw new Error("No image was generated. The response may have been blocked or did not contain image data.");
     });
-
-    const imagePart = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-
-    if (imagePart?.inlineData?.data) {
-        return imagePart.inlineData.data;
-    }
-    
-    throw new Error("No image was generated. The response may have been blocked or did not contain image data.");
 };
 
 // ---- Video ----
@@ -179,9 +192,12 @@ export const analyzeVideo = async (videoFile: File): Promise<string> => {
             mimeType: videoFile.type,
         },
     };
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: { parts: [videoPart, {text: "Analyze this video and describe what is happening. Provide a concise summary at the end."}] }
+
+    return withRetry(async () => {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: { parts: [videoPart, {text: "Analyze this video and describe what is happening. Provide a concise summary at the end."}] }
+        });
+        return response.text;
     });
-    return response.text;
 };

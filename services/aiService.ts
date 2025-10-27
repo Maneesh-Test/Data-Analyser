@@ -1,7 +1,7 @@
-// Fix: Import `Type` for creating a response schema.
 import { GoogleGenAI, Type } from "@google/genai";
 import { fileToBase64 } from '../utils/fileUtils';
 import { LLM_PROVIDERS } from '../lib/models';
+import { withRetry } from '../utils/retryUtils';
 
 let googleAI: GoogleGenAI;
 
@@ -190,34 +190,38 @@ export const generateReport = async (topic: string, keyPoints: string, audience:
 
     The report should have a title, an introduction, several sections with headings, and a conclusion. Format the output in clean markdown.`;
 
-    const response = await getGoogleAI().models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: prompt
+    return withRetry(async () => {
+        const response = await getGoogleAI().models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: prompt
+        });
+        return response.text;
     });
-    return response.text;
 };
 
 export const generateVegaSpec = async (csvData: string, prompt: string): Promise<string> => {
     trackUsage();
     const systemInstruction = `You are a data visualization expert. Your task is to generate a valid Vega-Lite JSON specification based on the user's request and the provided CSV data. Only output the JSON specification, with no extra text or markdown. The CSV data has the following headers and first few rows:\n\n${csvData.split('\n').slice(0, 4).join('\n')}`;
 
-    const response = await getGoogleAI().models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: prompt,
-        config: {
-            systemInstruction,
-            responseMimeType: 'application/json'
-        }
-    });
+    return withRetry(async () => {
+        const response = await getGoogleAI().models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: prompt,
+            config: {
+                systemInstruction,
+                responseMimeType: 'application/json'
+            }
+        });
 
-    return response.text;
+        return response.text;
+    });
 };
 
 
 export const cleanCsvData = async (csvData: string, instructions: string): Promise<string> => {
     trackUsage();
     const prompt = `Here is a raw CSV file:\n\n\`\`\`csv\n${csvData}\n\`\`\`\n\nPlease clean this data based on the following instructions: "${instructions}".\n\nYour response MUST be a single JSON object with two keys: "summary_of_changes" (a markdown string detailing the changes you made) and "cleaned_csv" (a string containing only the cleaned data in CSV format).`;
-    
+
     const responseSchema = {
         type: Type.OBJECT,
         properties: {
@@ -226,24 +230,24 @@ export const cleanCsvData = async (csvData: string, instructions: string): Promi
         },
         required: ['summary_of_changes', 'cleaned_csv']
     };
-    
-    const response = await getGoogleAI().models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema,
-        },
+
+    return withRetry(async () => {
+        const response = await getGoogleAI().models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+            },
+        });
+        return response.text;
     });
-    return response.text;
 };
 
 
 // --- Provider-Specific Analysis Functions ---
 
 const analyzeWithGoogle = async (file: File, modelId: string, prompt: string, schema: any, useThinkingMode: boolean): Promise<string> => {
-    // This unified approach sends the file as a base64 string for all types (image, text, pdf).
-    // This prevents embedding large text content directly into the prompt, fixing token limit errors.
     const base64Data = await fileToBase64(file);
     const contents = {
         parts: [
@@ -252,16 +256,18 @@ const analyzeWithGoogle = async (file: File, modelId: string, prompt: string, sc
         ]
     };
 
-    const response = await getGoogleAI().models.generateContent({ 
-      model: modelId, 
-      contents,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: schema,
-        ...(useThinkingMode && { thinkingConfig: { thinkingBudget: 32768 }})
-      }
+    return withRetry(async () => {
+        const response = await getGoogleAI().models.generateContent({
+          model: modelId,
+          contents,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: schema,
+            ...(useThinkingMode && { thinkingConfig: { thinkingBudget: 32768 }})
+          }
+        });
+        return response.text;
     });
-    return response.text;
 };
 
 const analyzeWithOpenAI = async (file: File, modelId: string, prompt: string, apiKey: string): Promise<string> => {
