@@ -57,7 +57,10 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ navigateTo }) 
     }, [user]);
 
     const loadProfile = async () => {
-        if (!user) return;
+        if (!user) {
+            setIsLoading(false);
+            return;
+        }
 
         setIsLoading(true);
         try {
@@ -67,12 +70,9 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ navigateTo }) 
                 .eq('id', user.id)
                 .maybeSingle();
 
-            if (error) throw error;
-
-            if (data) {
-                setProfile(data);
-            } else {
-                const username = user.email.split('@')[0];
+            if (error) {
+                console.error('Error fetching profile:', error);
+                const username = user.email?.split('@')[0] || 'user';
                 const { data: newProfile, error: insertError } = await supabase
                     .from('user_profiles')
                     .insert({
@@ -83,12 +83,49 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ navigateTo }) 
                     .select()
                     .single();
 
-                if (insertError) throw insertError;
-                setProfile(newProfile);
+                if (insertError) {
+                    console.error('Error creating profile:', insertError);
+                    setProfile({
+                        full_name: username,
+                        username: username,
+                        avatar_url: null
+                    });
+                } else {
+                    setProfile(newProfile);
+                }
+            } else if (data) {
+                setProfile(data);
+            } else {
+                const username = user.email?.split('@')[0] || 'user';
+                const { data: newProfile, error: insertError } = await supabase
+                    .from('user_profiles')
+                    .insert({
+                        id: user.id,
+                        username: username,
+                        full_name: username,
+                    })
+                    .select()
+                    .single();
+
+                if (insertError) {
+                    console.error('Error creating profile:', insertError);
+                    setProfile({
+                        full_name: username,
+                        username: username,
+                        avatar_url: null
+                    });
+                } else {
+                    setProfile(newProfile);
+                }
             }
         } catch (error) {
             console.error('Error loading profile:', error);
-            addToast('Failed to load profile', 'error');
+            const username = user.email?.split('@')[0] || 'user';
+            setProfile({
+                full_name: username,
+                username: username,
+                avatar_url: null
+            });
         } finally {
             setIsLoading(false);
         }
