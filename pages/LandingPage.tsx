@@ -350,29 +350,50 @@ export const LandingPage: React.FC<LandingPageProps> = ({ navigateTo }) => {
           </section>
 
           {/* Features Section */}
-          <section ref={featuresRef} id="features" className="py-20 sm:py-24 bg-white dark:bg-slate-950">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <section ref={featuresRef} id="features" className="relative py-20 sm:py-24 bg-gradient-to-b from-white via-slate-50 to-white dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 overflow-hidden">
+            {/* Decorative elements */}
+            <div className="absolute inset-0 opacity-30">
+              <div className="absolute top-20 left-10 w-72 h-72 bg-teal-300 dark:bg-teal-600 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl animate-blob"></div>
+              <div className="absolute top-40 right-10 w-72 h-72 bg-cyan-300 dark:bg-cyan-600 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl animate-blob animation-delay-2000"></div>
+              <div className="absolute bottom-20 left-1/3 w-72 h-72 bg-blue-300 dark:bg-blue-600 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl animate-blob animation-delay-4000"></div>
+            </div>
+
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
               <div className={`text-center max-w-3xl mx-auto mb-16 transition-opacity duration-700 ${isFeaturesVisible ? 'animate-slide-up-fade-in' : 'opacity-0'}`}>
-                <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">From Data Chaos to Actionable Clarity</h2>
-                <p className="mt-4 text-lg text-slate-600 dark:text-slate-400 leading-relaxed">Prism AI goes beyond simple analysis, transforming your raw files into structured intelligence that saves you time and drives better decisions.</p>
+                <div className="inline-flex items-center justify-center px-4 py-1.5 mb-6 text-sm font-medium text-teal-700 bg-teal-50 dark:text-teal-300 dark:bg-teal-950/50 rounded-full border border-teal-200 dark:border-teal-800">
+                  <ZapIcon className="w-4 h-4 mr-2" />
+                  Powerful Features
+                </div>
+                <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-slate-800 via-slate-700 to-slate-900 dark:from-white dark:via-slate-200 dark:to-slate-300 bg-clip-text text-transparent">
+                  From Data Chaos to Actionable Clarity
+                </h2>
+                <p className="mt-6 text-lg text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Prism AI goes beyond simple analysis, transforming your raw files into structured intelligence that saves you time and drives better decisions.
+                </p>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {features.map((feature, index) => (
-                   <div 
+                   <div
                     key={feature.title}
-                    className={`group relative bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 transition-all duration-300 overflow-hidden hover:scale-[1.02] hover:shadow-2xl hover:shadow-teal-500/10 dark:hover:shadow-teal-500/10 ${isFeaturesVisible ? 'animate-slide-up-fade-in' : 'opacity-0'}`}
+                    className={`group relative bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm rounded-2xl border border-slate-200/50 dark:border-slate-800/50 transition-all duration-500 overflow-hidden hover:scale-[1.03] hover:shadow-2xl hover:shadow-teal-500/20 dark:hover:shadow-teal-500/20 hover:border-teal-300 dark:hover:border-teal-700 ${isFeaturesVisible ? 'animate-slide-up-fade-in' : 'opacity-0'}`}
                     style={{ animationDelay: `${200 * (index + 1)}ms` }}
                    >
+                     {/* Gradient overlay on hover */}
+                     <div className="absolute inset-0 bg-gradient-to-br from-teal-500/0 via-transparent to-cyan-500/0 group-hover:from-teal-500/5 group-hover:to-cyan-500/5 transition-all duration-500"></div>
+
                      {/* Visual Area */}
-                     <div className="relative h-48">
+                     <div className="relative h-52 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
                         {feature.visual}
                      </div>
 
                      {/* Text Content */}
-                     <div className="p-6">
-                        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">{feature.title}</h3>
-                        <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-sm">{feature.description}</p>
+                     <div className="relative p-8">
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-3 group-hover:text-teal-700 dark:group-hover:text-teal-400 transition-colors">{feature.title}</h3>
+                        <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{feature.description}</p>
+
+                        {/* Decorative bottom line */}
+                        <div className="mt-6 w-0 h-1 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full group-hover:w-full transition-all duration-500"></div>
                      </div>
                    </div>
                 ))}
