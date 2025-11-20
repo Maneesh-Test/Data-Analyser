@@ -1,5 +1,6 @@
 import { GoogleGenAI, Modality, Type, GenerateContentResponse } from "@google/genai";
 import { fileToBase64 } from "../utils/fileUtils";
+import { withRetry, RateLimitError } from "../utils/retryUtils";
 
 let ai: GoogleGenAI;
 
@@ -39,11 +40,14 @@ export const transcribeAudio = async (audioFile: File): Promise<string> => {
             mimeType: audioFile.type,
         },
     };
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: { parts: [audioPart, {text: "Transcribe the following audio. Provide only the transcribed text, without any additional formatting, timestamps, or commentary."}] }
+
+    return withRetry(async () => {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [audioPart, {text: "Transcribe the following audio. Provide only the transcribed text, without any additional formatting, timestamps, or commentary."}] }
+        });
+        return response.text;
     });
-    return response.text;
 };
 
 export const generateSpeech = async (text: string): Promise<string> => {

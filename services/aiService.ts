@@ -2,6 +2,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { fileToBase64 } from '../utils/fileUtils';
 import { LLM_PROVIDERS } from '../lib/models';
+import { withRetry, RateLimitError } from '../utils/retryUtils';
 
 let googleAI: GoogleGenAI;
 

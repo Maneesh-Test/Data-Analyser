@@ -8,6 +8,7 @@ import { LLM_PROVIDERS, Model } from '../lib/models';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { convertSvgToPng } from '../utils/fileUtils';
+import { handleApiError } from '../utils/errorHandler';
 import { Page } from '../App';
 import { supabase } from '../supabase/client';
 
@@ -69,11 +70,11 @@ export const DashboardPage: React.FC<{ navigateTo: (page: Page) => void }> = ({ 
       addToast(`Analysis complete for ${fileData.file.name}`, 'success');
     } catch (error) {
       console.error(error);
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+      const errorMessage = handleApiError(error);
       setUploadedFiles(prev => prev.map(f =>
         f.id === fileData.id ? { ...f, status: UploadStatus.ERROR, analysis: errorMessage } : f
       ));
-      addToast(`Analysis failed for ${fileData.file.name}.`, 'error');
+      addToast(`Analysis failed: ${errorMessage.split('\n')[0]}`, 'error');
     }
   }, [addToast]);
 
